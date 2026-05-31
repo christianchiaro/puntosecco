@@ -1,0 +1,88 @@
+{# Scene rotanti per la modalità schermo + ticker. Richiede board, upcoming, groups, champion, podium_data. #}
+<div id="tv-board">
+  <section class="tv-scene tv-scene--campi">
+    <div class="tv-grid">
+      {% for cell in board %}
+        <div class="tv-cell {% if cell.live %}tv-cell--live{% endif %}">
+          <div class="tv-court">{{ cell.court }}</div>
+          {% if cell.live %}
+            <div class="tv-match">
+              <div class="tv-team {% if cell.live.winner_id and cell.live.winner_id == cell.live.team_a_id %}is-win{% endif %}">{{ cell.live.team_a.name|default:"-" }}</div>
+              <div class="tv-team {% if cell.live.winner_id and cell.live.winner_id == cell.live.team_b_id %}is-win{% endif %}">{{ cell.live.team_b.name|default:"-" }}</div>
+            </div>
+            {% if cell.live.score_display %}
+              <div class="tv-score">{{ cell.live.score_display }}</div>
+            {% else %}
+              <div class="tv-score tv-score--empty">in gioco</div>
+            {% endif %}
+            <div class="tv-tag tv-tag--live">● IN CORSO · {{ cell.live.round_label }}</div>
+          {% elif cell.next %}
+            <div class="tv-match tv-next">
+              <div class="tv-team">{{ cell.next.team_a.name|default:"da definire" }}</div>
+              <div class="tv-team">{{ cell.next.team_b.name|default:"da definire" }}</div>
+            </div>
+            <div class="tv-tag">Prossima · {{ cell.next.scheduled_start|time:"H:i" }} · {{ cell.next.round_label }}</div>
+          {% else %}
+            <div class="tv-free">Campo libero</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="tv-scene tv-scene--classifiche">
+    <h2 class="tv-scene__title">Classifiche gironi</h2>
+    <div class="tv-standings">
+      {% for g, rows in groups %}
+        <div class="tv-standings__group">
+          <h3>Girone {{ g.name }}</h3>
+          <ol>
+            {% for r in rows %}
+              <li class="{% if r.rank <= 2 %}is-gold{% endif %}"><span class="tv-rank">{{ r.rank }}</span> <span class="tv-std-name">{{ r.team.name }}</span> <b>{{ r.wins }}V</b> <span class="tv-diff">{% if r.diff > 0 %}+{% endif %}{{ r.diff }}</span></li>
+            {% endfor %}
+          </ol>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if gold_bracket_svg %}
+    <section class="tv-scene tv-scene--bracket">
+      <h2 class="tv-scene__title">Tabellone Gold</h2>
+      <div class="tv-bracket-wrap">{{ gold_bracket_svg|safe }}</div>
+    </section>
+  {% endif %}
+  {% if silver_bracket_svg %}
+    <section class="tv-scene tv-scene--bracket">
+      <h2 class="tv-scene__title">Tabellone Silver</h2>
+      <div class="tv-bracket-wrap">{{ silver_bracket_svg|safe }}</div>
+    </section>
+  {% endif %}
+
+  {% if champion %}
+    <section class="tv-scene tv-scene--podio">
+      <div class="tv-trophy">🏆</div>
+      <div class="tv-champion-label">Campione</div>
+      <div class="tv-champion">{{ champion.name }}</div>
+      {% if podium_data %}
+        <div class="tv-podium">
+          <span>🥈 {{ podium_data.gold.second.name|default:"-" }}</span>
+          <span>🥉 {{ podium_data.gold.third.name|default:"-" }}</span>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if ticker %}
+    <div class="tv-ticker">
+      <span class="tv-ticker__label">Prossime</span>
+      <div class="tv-ticker__viewport">
+        {# Track duplicato: l'animazione trasla del 50% per uno scorrimento continuo. #}
+        <div class="tv-ticker__track">
+          {% for it in ticker %}<span class="tv-ticker__item">{{ it.match.scheduled_start|time:"H:i" }} · {{ it.court }} · {{ it.match.team_a.name }} / {{ it.match.team_b.name }}</span>{% endfor %}
+          {% for it in ticker %}<span class="tv-ticker__item" aria-hidden="true">{{ it.match.scheduled_start|time:"H:i" }} · {{ it.court }} · {{ it.match.team_a.name }} / {{ it.match.team_b.name }}</span>{% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Inserimento punteggi - {{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Inserimento punteggi</h1>
+  <p class="muted"><small>Salvando un risultato le classifiche si ricalcolano e il tabellone avanza da solo.</small></p>
+
+  <div class="score-list">
+    {% for match in matches %}
+      {% include "tournaments/partials/_score_row.html" with open_id=open_id %}
+    {% endfor %}
+  </div>
+{% endblock %}

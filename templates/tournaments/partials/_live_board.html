@@ -1,0 +1,29 @@
+{# Partial ricaricato in polling. Richiede `live_matches`, `upcoming`, `t`. #}
+<div id="live-board">
+  <section class="live__now">
+    <h2>In corso</h2>
+    {% for m in live_matches %}
+      <div class="live-row">
+        {% include "tournaments/partials/_match_pill.html" with match=m %}
+        <small>{{ m.court }} · {{ m.round_label }}{% if m.group %} {{ m.group.name }}{% endif %}</small>
+      </div>
+    {% empty %}
+      <p class="muted">Nessuna partita in corso.</p>
+    {% endfor %}
+  </section>
+
+  <section class="live__next">
+    <h2>Prossime</h2>
+    {% for m in upcoming %}
+      <div class="live-row">
+        <span class="live-time">{{ m.scheduled_start|time:"H:i" }}</span>
+        <small>{{ m.court }}</small>
+        {% include "tournaments/partials/_match_pill.html" with match=m %}
+      </div>
+    {% empty %}
+      <p class="muted">-</p>
+    {% endfor %}
+  </section>
+
+  <p class="muted"><small>Aggiornamento automatico ogni 60 secondi</small></p>
+</div>

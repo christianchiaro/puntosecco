@@ -1,0 +1,22 @@
+{# Richiede `group`, `rows`, `t`. #}
+<table class="standings">
+  <caption>Girone {{ group.name }}</caption>
+  <thead>
+    <tr><th>#</th><th>Coppia</th><th>G</th><th>V</th><th>Game</th><th>Diff</th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.rank }}</td>
+        <td>
+          <a href="{% url 'tournaments:team' slug=t.slug team_id=r.team.id %}">{{ r.team.name }}</a>
+          {% if r.rank <= 2 %}<span class="badge badge--gold">gold</span>{% else %}<span class="badge badge--silver">silver</span>{% endif %}
+        </td>
+        <td>{{ r.played }}</td>
+        <td>{{ r.wins }}</td>
+        <td>{{ r.gf }}-{{ r.ga }}</td>
+        <td>{{ r.diff }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

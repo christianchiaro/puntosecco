@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ team.name }} - {{ t.name }}{% endblock %}
+{% block og_title %}{{ team.name }} - {{ t.name }}{% endblock %}
+{% block og_description %}{{ team.player1 }} · {{ team.player2 }}{% if team.group %} · Girone {{ team.group.name }}{% endif %} - torneo {{ t.name }}.{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>{{ team.name }}</h1>
+  <p class="muted">
+    {{ team.player1 }} · {{ team.player2 }}{% if team.group %} · Girone {{ team.group.name }}{% endif %}
+  </p>
+
+  {% if achievements %}
+    <div class="ach-list">
+      {% for b in achievements %}
+        <span class="ach" title="{{ b.desc }}">{{ b.icon }} {{ b.label }}</span>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if next_match %}
+    <p class="next-match">
+      <strong>Prossima:</strong>
+      {{ next_match.scheduled_start|time:"H:i" }} · {{ next_match.court }} · {{ next_match.round_label }}
+    </p>
+  {% endif %}
+
+  <h2>Partite</h2>
+  {% for m in matches %}
+    <div class="live-row">
+      {% if m.scheduled_start %}<span class="live-time">{{ m.scheduled_start|time:"H:i" }}</span>{% endif %}
+      <small>{{ m.court|default:"" }}</small>
+      {% include "tournaments/partials/_match_pill.html" with match=m %}
+    </div>
+  {% empty %}
+    <p class="muted">Nessuna partita.</p>
+  {% endfor %}
+{% endblock %}

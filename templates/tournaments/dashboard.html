@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+
+  {% if champion %}
+    <a class="champion-banner" href="{% url 'tournaments:albo' slug=t.slug %}">
+      <span class="champion-banner__trophy">🏆</span>
+      <span><strong>Campione:</strong> {{ champion.name }}</span>
+      <span class="champion-banner__cta">Albo d'oro →</span>
+    </a>
+  {% endif %}
+
+  {% if live_matches %}
+    <section class="dash-section">
+      <h2>In corso</h2>
+      <div class="dash-live">
+        {% for m in live_matches %}
+          <div class="dash-card">
+            {% include "tournaments/partials/_match_pill.html" with match=m %}
+            <small class="muted">{{ m.court }} · {{ m.round_label }}{% if m.group %} {{ m.group.name }}{% endif %}</small>
+            <a class="dash-card__score" href="{% url 'tournaments:score_panel' slug=t.slug %}?open={{ m.id }}#match-{{ m.id }}">Inserisci punteggio →</a>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if upcoming %}
+    <section class="dash-section">
+      <div class="dash-section__head">
+        <h2>Prossime partite</h2>
+        <a href="{% url 'tournaments:schedule' slug=t.slug %}">Calendario →</a>
+      </div>
+      {% for m in upcoming %}
+        <div class="live-row">
+          <span class="live-time">{{ m.scheduled_start|time:"H:i" }}</span>
+          <small>{{ m.court }}</small>
+          {% include "tournaments/partials/_match_pill.html" with match=m %}
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  {% if groups %}
+    <section class="dash-section">
+      <div class="dash-section__head">
+        <h2>Classifiche gironi</h2>
+        <a href="{% url 'tournaments:standings' slug=t.slug %}">Tutte →</a>
+      </div>
+      <div class="groups-grid">
+        {% for g, rows in groups %}
+          {% include "tournaments/partials/_standings_table.html" with group=g rows=rows %}
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if not live_matches and not upcoming and not groups %}
+    <p class="muted">Il torneo non è ancora iniziato.</p>
+  {% endif %}
+
+  <div class="page-actions">
+    {% include "tournaments/partials/_share.html" %}
+  </div>
+{% endblock %}

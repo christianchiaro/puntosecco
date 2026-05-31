@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Calendario - {{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Calendario</h1>
+
+  {# Mobile: lista per orario (la griglia sarebbe illeggibile a 4 campi). #}
+  <div class="schedule-list">
+    {% for s in slots %}
+      <div class="slot-group">
+        <div class="slot-group__time">{{ s.time|time:"H:i" }}</div>
+        {% for m in s.matches %}
+          <div class="slot-match cell--{{ m.status }}">
+            <span class="slot-match__court">{{ m.court }}</span>
+            {% include "tournaments/partials/_match_pill.html" with match=m %}
+            <small class="cell__label">{% if m.group %}Girone {{ m.group.name }} · {% endif %}{{ m.round_label }}</small>
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+
+  {# Desktop: griglia campi × orari. #}
+  <div class="table-scroll schedule-grid">
+    <table class="schedule">
+      <thead>
+        <tr>
+          <th>Ora</th>
+          {% for c in courts %}<th>{{ c }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <th class="schedule__time">{{ row.time|time:"H:i" }}</th>
+            {% for cell in row.cells %}
+              {% if cell.kind == "match" %}
+                <td rowspan="{{ cell.span }}" class="cell cell--{{ cell.match.status }}">
+                  {% include "tournaments/partials/_match_pill.html" with match=cell.match %}
+                  <small class="cell__label">
+                    {% if cell.match.group %}Girone {{ cell.match.group.name }} · {% endif %}{{ cell.match.round_label }}
+                  </small>
+                </td>
+              {% elif cell.kind == "empty" %}
+                <td class="cell cell--empty"></td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

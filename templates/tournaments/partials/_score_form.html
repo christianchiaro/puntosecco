@@ -1,0 +1,67 @@
+{# Form HTMX di inserimento punteggio. Richiede `match`, `t`; opzionale `error`. #}
+<form class="score-form" id="match-{{ match.id }}"
+      hx-post="{% url 'tournaments:score_match' slug=t.slug match_id=match.id %}"
+      hx-target="#match-{{ match.id }}" hx-swap="outerHTML">
+  <div class="score-form__teams">{{ match.team_a.name }} <span class="muted">vs</span> {{ match.team_b.name }}</div>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+  <div class="set-row">
+    <span class="set-row__label">Set 1</span>
+    <div class="set-row__score">
+      <input type="number" name="set1_a" min="0" max="20" inputmode="numeric" value="{{ s1.games_a|default_if_none:'' }}" aria-label="Set 1 game {{ match.team_a.name }}">
+      <span class="dash">-</span>
+      <input type="number" name="set1_b" min="0" max="20" inputmode="numeric" value="{{ s1.games_b|default_if_none:'' }}" aria-label="Set 1 game {{ match.team_b.name }}">
+    </div>
+    <label class="set-row__tb">
+      <span class="tb-label">tie-break</span>
+      <input type="number" name="set1_ta" min="0" inputmode="numeric" placeholder="-" value="{{ s1.tiebreak_a|default_if_none:'' }}">
+      <span class="dash">-</span>
+      <input type="number" name="set1_tb" min="0" inputmode="numeric" placeholder="-" value="{{ s1.tiebreak_b|default_if_none:'' }}">
+    </label>
+  </div>
+
+  {% if match.is_knockout %}
+    <div class="set-row">
+      <span class="set-row__label">Set 2</span>
+      <div class="set-row__score">
+        <input type="number" name="set2_a" min="0" max="20" inputmode="numeric" value="{{ s2.games_a|default_if_none:'' }}">
+        <span class="dash">-</span>
+        <input type="number" name="set2_b" min="0" max="20" inputmode="numeric" value="{{ s2.games_b|default_if_none:'' }}">
+      </div>
+      <label class="set-row__tb">
+        <span class="tb-label">tie-break</span>
+        <input type="number" name="set2_ta" min="0" inputmode="numeric" placeholder="-" value="{{ s2.tiebreak_a|default_if_none:'' }}">
+        <span class="dash">-</span>
+        <input type="number" name="set2_tb" min="0" inputmode="numeric" placeholder="-" value="{{ s2.tiebreak_b|default_if_none:'' }}">
+      </label>
+    </div>
+    <div class="set-row">
+      <span class="set-row__label">Super&nbsp;TB</span>
+      <div class="set-row__score">
+        <input type="number" name="set3_a" min="0" inputmode="numeric" placeholder="-" value="{{ s3.games_a|default_if_none:'' }}">
+        <span class="dash">-</span>
+        <input type="number" name="set3_b" min="0" inputmode="numeric" placeholder="-" value="{{ s3.games_b|default_if_none:'' }}">
+      </div>
+      <span class="set-row__hint muted">solo se 1-1</span>
+    </div>
+  {% endif %}
+
+  <div class="score-form__actions">
+    {% if match.status == "live" %}
+      <button type="submit" name="action" value="partial" class="secondary">Salva parziale</button>
+    {% endif %}
+    <button type="submit" name="action" value="final">Salva risultato</button>
+    <button type="button" class="secondary"
+            hx-get="{% url 'tournaments:score_match' slug=t.slug match_id=match.id %}?cancel=1"
+            hx-target="#match-{{ match.id }}" hx-swap="outerHTML">Annulla</button>
+  </div>
+  {% if match.status == "live" %}
+    <p class="muted"><small>«Parziale» tiene la partita in corso; «Salva risultato» la chiude.</small></p>
+  {% endif %}
+
+  <div class="score-form__wo">
+    <span class="muted">Ritirata (W.O.):</span>
+    <button type="submit" name="action" value="wo_a" class="ghost">vince {{ match.team_a.name }}</button>
+    <button type="submit" name="action" value="wo_b" class="ghost">vince {{ match.team_b.name }}</button>
+  </div>
+</form>

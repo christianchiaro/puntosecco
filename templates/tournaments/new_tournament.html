@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Nuovo torneo{% endblock %}
+
+{% block content %}
+  <h1>Nuovo torneo</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" class="form-card">
+    {% csrf_token %}
+    <label>Nome<input type="text" name="name" maxlength="120" required></label>
+    <label>Data<input type="date" name="date" required></label>
+    <p class="muted"><small>Crea 4 campi e 4 gironi (A-D). Poi aggiungi le coppie e sorteggia.</small></p>
+    <button type="submit">Crea torneo</button>
+  </form>
+{% endblock %}

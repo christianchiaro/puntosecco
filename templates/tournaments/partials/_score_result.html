@@ -1,0 +1,5 @@
+{# Risposta al salvataggio: riga aggiornata (con flash) + refresh OOB delle dipendenti. #}
+{% include "tournaments/partials/_score_row.html" with match=match flash=True %}
+{% for dep in dependents %}
+  {% include "tournaments/partials/_score_row.html" with match=dep oob=True flash=True %}
+{% endfor %}

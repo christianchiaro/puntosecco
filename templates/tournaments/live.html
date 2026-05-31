@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Live - {{ t.name }}{% endblock %}
+{% block og_title %}Tabellone live - {{ t.name }}{% endblock %}
+{% block og_description %}Segui in diretta i risultati del torneo {{ t.name }}: partite in corso e prossime.{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Tabellone live
+    <span id="live-spinner" class="htmx-indicator"><span class="skeleton skeleton-pill">aggiornamento…</span></span>
+  </h1>
+
+  <div class="live-actions" x-data="{ qr: false }">
+    {% include "tournaments/partials/_share.html" %}
+    <a class="btn secondary" href="{% url 'tournaments:tv' slug=t.slug %}">📺 Schermo</a>
+    <button class="secondary" type="button" @click="qr = !qr" x-text="qr ? 'Nascondi QR' : '📱 QR per il live'">📱 QR per il live</button>
+    <div x-show="qr" x-cloak class="qr-box">
+      <img src="{{ qr_data_uri }}" alt="QR del tabellone live" width="170" height="170">
+      <small class="muted">Inquadra per aprire il live sul telefono</small>
+    </div>
+  </div>
+  {% comment %}Polling HTMX ogni 60s; hx-indicator mostra lo skeleton shimmer durante la richiesta.{% endcomment %}
+  <div hx-get="{% url 'tournaments:live_board' slug=t.slug %}"
+       hx-trigger="every 60s"
+       hx-swap="innerHTML transition:false"
+       hx-indicator="#live-spinner">
+    {% include "tournaments/partials/_live_board.html" %}
+  </div>
+{% endblock %}

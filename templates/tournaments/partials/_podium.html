@@ -1,0 +1,14 @@
+{# Podio di un tabellone. Richiede `pod` (first..fourth), `title`, `t`. #}
+<div class="podium">
+  <h3 class="podium__title">{{ title }}</h3>
+  <ol class="podium__list">
+    <li class="podium__row podium__row--1"><span class="podium__pos">🥇</span>
+      {% if pod.first %}<a href="{% url 'tournaments:team' slug=t.slug team_id=pod.first.id %}">{{ pod.first.name }}</a>{% else %}<span class="tbd">da assegnare</span>{% endif %}</li>
+    <li class="podium__row podium__row--2"><span class="podium__pos">🥈</span>
+      {% if pod.second %}<a href="{% url 'tournaments:team' slug=t.slug team_id=pod.second.id %}">{{ pod.second.name }}</a>{% else %}<span class="tbd">-</span>{% endif %}</li>
+    <li class="podium__row podium__row--3"><span class="podium__pos">🥉</span>
+      {% if pod.third %}<a href="{% url 'tournaments:team' slug=t.slug team_id=pod.third.id %}">{{ pod.third.name }}</a>{% else %}<span class="tbd">-</span>{% endif %}</li>
+    <li class="podium__row podium__row--4"><span class="podium__pos">4°</span>
+      {% if pod.fourth %}<a href="{% url 'tournaments:team' slug=t.slug team_id=pod.fourth.id %}">{{ pod.fourth.name }}</a>{% else %}<span class="tbd">-</span>{% endif %}</li>
+  </ol>
+</div>

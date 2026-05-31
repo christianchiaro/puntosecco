@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Albo d'oro - {{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Albo d'oro</h1>
+
+  <div class="podium-grid">
+    {% include "tournaments/partials/_podium.html" with pod=awards.podium.gold title="🏆 Gold" %}
+    {% include "tournaments/partials/_podium.html" with pod=awards.podium.silver title="🥈 Silver" %}
+  </div>
+
+  {% if awards.specials %}
+    <h2>Premi speciali</h2>
+    <div class="cards">
+      {% for s in awards.specials %}
+        <div class="card award-card">
+          <span class="award-card__icon">{{ s.icon }}</span>
+          <strong>{{ s.label }}</strong>
+          <span>{{ s.team.name }}</span>
+          <span class="muted">{{ s.value }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if awards.team_badges %}
+    <h2>Riconoscimenti</h2>
+    {% for tb in awards.team_badges %}
+      <div class="award-row">
+        <a href="{% url 'tournaments:team' slug=t.slug team_id=tb.team.id %}">{{ tb.team.name }}</a>
+        <span class="ach-list">
+          {% for b in tb.badges %}<span class="ach" title="{{ b.desc }}">{{ b.icon }} {{ b.label }}</span>{% endfor %}
+        </span>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endblock %}

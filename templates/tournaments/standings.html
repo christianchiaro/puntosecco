@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Classifiche - {{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Classifiche gironi</h1>
+  <div class="groups-grid">
+    {% for g, rows in groups %}
+      {% include "tournaments/partials/_standings_table.html" with group=g rows=rows %}
+    {% endfor %}
+  </div>
+{% endblock %}

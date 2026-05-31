@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiche - {{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Statistiche</h1>
+
+  <div class="stat-progress">
+    <div>Partite giocate: <strong>{{ stats.done }}/{{ stats.total }}</strong> ({{ stats.pct }}%)</div>
+    <div class="progress"><span style="width: {{ stats.pct }}%"></span></div>
+  </div>
+
+  <div class="cards">
+    {% if stats.most_wins %}
+      <div class="card stat-card">
+        <span class="stat-card__label">Più vittorie</span>
+        <strong>{{ stats.most_wins.team.name }}</strong>
+        <span class="muted">{{ stats.most_wins.wins }} vinte</span>
+      </div>
+    {% endif %}
+    {% if stats.best_attack %}
+      <div class="card stat-card">
+        <span class="stat-card__label">Miglior attacco</span>
+        <strong>{{ stats.best_attack.team.name }}</strong>
+        <span class="muted">{{ stats.best_attack.gf }} game fatti</span>
+      </div>
+    {% endif %}
+    {% if stats.best_defense %}
+      <div class="card stat-card">
+        <span class="stat-card__label">Miglior difesa</span>
+        <strong>{{ stats.best_defense.team.name }}</strong>
+        <span class="muted">{{ stats.best_defense.ga }} game subiti</span>
+      </div>
+    {% endif %}
+  </div>
+
+  <h2>Classifica generale</h2>
+  <table class="standings">
+    <thead>
+      <tr><th>#</th><th>Coppia</th><th>G</th><th>V</th><th>Game</th><th>Diff</th></tr>
+    </thead>
+    <tbody>
+      {% for s in stats.leaderboard %}
+        <tr>
+          <td>{% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% else %}{{ forloop.counter }}{% endif %}</td>
+          <td><a href="{% url 'tournaments:team' slug=t.slug team_id=s.team.id %}">{{ s.team.name }}</a></td>
+          <td>{{ s.played }}</td>
+          <td>{{ s.wins }}</td>
+          <td>{{ s.gf }}-{{ s.ga }}</td>
+          <td>{{ s.diff }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

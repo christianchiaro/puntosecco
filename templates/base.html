@@ -1,0 +1,182 @@
+{% load django_htmx static %}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Punto Secco{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Torneo di padel Punto Secco: 16 coppie, 4 gironi, tabelloni gold & silver e punteggi in tempo reale.{% endblock %}">
+
+  {# --- Anteprima social: Open Graph + Twitter Card (i crawler leggono il server, non l'HTMX) --- #}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Punto Secco">
+  <meta property="og:locale" content="it_IT">
+  <meta property="og:title" content="{% block og_title %}Punto Secco - Torneo di Padel{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}16 coppie, 4 gironi, tabelloni gold & silver. Classifiche, calendario e risultati in diretta.{% endblock %}">
+  <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  <meta property="og:image" content="{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% static 'img/og.png' %}{% endblock %}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Punto Secco - Torneo di Padel">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- Tema: applica la scelta salvata PRIMA del paint (niente flash). Default = sistema. -->
+  <script>
+    (function () {
+      var t = localStorage.getItem("theme");
+      if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+    })();
+  </script>
+
+  <!-- Cross-fade fluido tra le pagine boosted (View Transitions API; degrada senza problemi). -->
+  <meta name="htmx-config" content='{"globalViewTransitions": true}'>
+
+  <!-- HTMX + Alpine via CDN (niente bundler: ok per PythonAnywhere) -->
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <!-- Coriandoli per le celebrazioni (≈6 KB, nessuna dipendenza) -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <!-- Alpine deve re-inizializzare i nodi inseriti da htmx (boost o swap parziali) -->
+  <script>
+    document.addEventListener("htmx:afterSettle", function (evt) {
+      if (window.Alpine && evt.detail && evt.detail.target) {
+        window.Alpine.initTree(evt.detail.target);
+      }
+    });
+  </script>
+
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<!--
+  hx-boost: ogni link/form interno diventa AJAX, htmx scambia solo il <body>.
+  La view ritorna comunque la pagina intera → HTTP puro e boost danno lo STESSO DOM.
+  hx-headers: CSRF token per le richieste hx-* non-GET senza <form>.
+-->
+<body hx-boost="true" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-brand" href="{% url 'core:home' %}">🎾 Punto Secco</a>
+      <nav class="site-nav">
+        <a href="{% url 'core:home' %}">Home</a>
+        <a href="{% url 'core:about' %}">Chi siamo</a>
+        <button class="theme-toggle" type="button"
+                x-data="{ dark: document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches),
+                          toggle() { this.dark = !this.dark; document.documentElement.dataset.theme = this.dark ? 'dark' : 'light'; localStorage.setItem('theme', this.dark ? 'dark' : 'light'); } }"
+                @click="toggle()"
+                x-text="dark ? '☀️' : '🌙'"
+                :aria-label="dark ? 'Tema chiaro' : 'Tema scuro'">🌙</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  {# Toast di conferma: alimentati dall'header HX-Trigger delle risposte htmx. #}
+  <div id="toast-wrap" aria-live="polite"></div>
+  <script>
+    // IMPORTANTE: hx-boost rimpiazza il body e ri-esegue questo script ad ogni navigazione.
+    // Inizializziamo UNA SOLA VOLTA (guardia su window), altrimenti i listener si accumulano
+    // e un solo evento toast genererebbe più toast insieme. Il listener sta su `document`
+    // (mai sostituito) e gli eventi HX-Trigger di htmx vi arrivano per bubbling.
+    if (!window.__pkInit) {
+      window.__pkInit = true;
+
+      window.showToast = function (msg) {
+        var wrap = document.getElementById("toast-wrap");
+        if (!wrap) return;
+        var el = document.createElement("div");
+        el.className = "toast";
+        el.textContent = msg;
+        wrap.appendChild(el);
+        setTimeout(function () {
+          el.classList.add("toast--out");
+          setTimeout(function () { el.remove(); }, 320);
+        }, 2500);
+      };
+
+      document.addEventListener("toast", function (e) {
+        window.showToast((e.detail && e.detail.message) || "Fatto");
+      });
+
+      // Condivisione robusta: Web Share nativa → clipboard → fallback legacy. Sempre con feedback.
+      window.sharePage = async function () {
+        var url = location.href;
+        if (navigator.share) {
+          try { await navigator.share({ title: document.title, url: url }); return; }
+          catch (e) { if (e && e.name === "AbortError") return; }  // utente ha annullato
+        }
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+            window.showToast("Link copiato"); return;
+          }
+        } catch (e) { /* prova il fallback sotto */ }
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          document.execCommand("copy"); ta.remove();
+          window.showToast("Link copiato"); return;
+        } catch (e) { /* ignora */ }
+        window.showToast("Copia il link dalla barra del browser");
+      };
+
+      // --- Celebrazioni: coriandoli + campione (eventi via HX-Trigger) ---
+      var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      window.fireConfetti = function (level) {
+        if (reduceMotion || typeof confetti !== "function") return;
+        var green = ["#0e7c66", "#2bb99a"], gold = ["#b8902a", "#e0c069"], white = ["#ffffff"];
+        if (level === "small") {
+          confetti({ particleCount: 60, spread: 60, startVelocity: 35, origin: { y: 0.7 }, colors: green.concat(gold) });
+          return;
+        }
+        if (level === "medium") {
+          confetti({ particleCount: 120, spread: 80, origin: { y: 0.65 }, colors: green.concat(gold) });
+          return;
+        }
+        // big / champion: doppio sparo dai lati
+        var end = Date.now() + 900;
+        (function frame() {
+          confetti({ particleCount: 6, angle: 60, spread: 70, origin: { x: 0 }, colors: gold.concat(white) });
+          confetti({ particleCount: 6, angle: 120, spread: 70, origin: { x: 1 }, colors: gold.concat(white) });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        })();
+        confetti({ particleCount: 160, spread: 100, origin: { y: 0.6 }, colors: gold.concat(green) });
+      };
+
+      window.showChampion = function (name) {
+        var wrap = document.getElementById("champion-overlay");
+        if (!wrap) {
+          wrap = document.createElement("div");
+          wrap.id = "champion-overlay";
+          document.body.appendChild(wrap);
+        }
+        wrap.innerHTML =
+          '<div class="champion-card">' +
+          '<div class="champion-trophy">🏆</div>' +
+          '<div class="champion-label">Campione</div>' +
+          '<div class="champion-name"></div>' +
+          '<button class="champion-close" type="button">Chiudi</button>' +
+          "</div>";
+        wrap.querySelector(".champion-name").textContent = name || "-";
+        wrap.classList.add("is-open");
+        wrap.querySelector(".champion-close").onclick = function () { wrap.classList.remove("is-open"); };
+        window.fireConfetti("champion");
+      };
+
+      document.addEventListener("celebrate", function (e) {
+        window.fireConfetti((e.detail && e.detail.level) || "small");
+      });
+      document.addEventListener("champion", function (e) {
+        window.showChampion(e.detail && e.detail.team);
+      });
+    }
+  </script>
+
+  {% django_htmx_script %}
+</body>
+</html>

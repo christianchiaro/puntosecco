@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Registro - {{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Registro modifiche</h1>
+  <p class="muted"><small>Tutte le modifiche ai punteggi, in chiaro per trasparenza.</small></p>
+
+  {% for log in logs %}
+    <div class="log-row">
+      <span class="log-time">{{ log.created|date:"H:i" }}</span>
+      <span class="log-action log-action--{{ log.action }}">{{ log.action }}</span>
+      <span class="log-detail">{{ log.detail }}</span>
+    </div>
+  {% empty %}
+    <p class="muted">Nessuna modifica registrata.</p>
+  {% endfor %}
+{% endblock %}

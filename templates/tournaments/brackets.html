@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block title %}Tabelloni - {{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Tabelloni</h1>
+  {% include "tournaments/partials/_bracket.html" with data=gold title="Gold" %}
+  {% include "tournaments/partials/_bracket.html" with data=silver title="Silver" %}
+{% endblock %}

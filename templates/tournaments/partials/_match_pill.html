@@ -1,0 +1,13 @@
+{# Pillola partita riusabile (calendario, tabelloni, live, pagina squadra). Richiede `match` e `t`. #}
+<div class="match match--{{ match.status }}">
+  <span class="match__team {% if match.winner_id and match.winner_id == match.team_a_id %}is-win{% endif %}">
+    {% if match.team_a %}<a href="{% url 'tournaments:team' slug=t.slug team_id=match.team_a_id %}">{{ match.team_a.name }}</a>{% else %}<span class="tbd">da definire</span>{% endif %}
+  </span>
+  <span class="match__team {% if match.winner_id and match.winner_id == match.team_b_id %}is-win{% endif %}">
+    {% if match.team_b %}<a href="{% url 'tournaments:team' slug=t.slug team_id=match.team_b_id %}">{{ match.team_b.name }}</a>{% else %}<span class="tbd">da definire</span>{% endif %}
+  </span>
+  <span class="match__meta">
+    {% if match.status == "live" %}<span class="match-status match-status--live">● in corso</span>{% endif %}
+    {% if match.score_display %}<span class="match__score">{{ match.score_display }}{% if match.had_bagel %} <span class="bagel" title="Cappotto 6-0">🔥</span>{% endif %}</span>{% endif %}
+  </span>
+</div>

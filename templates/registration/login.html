@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}Accesso staff - Punto Secco{% endblock %}
+
+{% block content %}
+  <h1>Accesso staff</h1>
+  {% if form.errors %}<p class="error">Username o password non validi.</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Entra</button>
+  </form>
+{% endblock %}

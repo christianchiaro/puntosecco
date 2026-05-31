@@ -1,0 +1,34 @@
+{# Riga staff in sola lettura. Richiede `match`, `t`; opzionale `oob` per il refresh out-of-band. #}
+<div class="score-row{% if flash %} score-row--flash{% endif %}" id="match-{{ match.id }}"{% if oob %} hx-swap-oob="true"{% endif %}{% if open_id and match.can_be_scored and open_id == match.id|stringformat:'s' %} hx-get="{% url 'tournaments:score_match' slug=t.slug match_id=match.id %}" hx-trigger="load" hx-target="#match-{{ match.id }}" hx-swap="outerHTML"{% endif %}>
+  <div class="score-row__info">
+    {% if match.scheduled_start %}<strong>{{ match.scheduled_start|time:"H:i" }}</strong>{% endif %}
+    {{ match.court }} ·
+    {% if match.group %}Girone {{ match.group.name }}{% else %}{{ match.get_phase_display }}{% endif %}
+    {{ match.round_label }}
+    <span class="match-status match-status--{{ match.status }}">{{ match.get_status_display }}</span>
+  </div>
+  {% include "tournaments/partials/_match_pill.html" with match=match %}
+  <div class="score-row__actions">
+    {% if match.can_be_scored %}
+      {% if not match.is_played %}
+        {% if match.status == "scheduled" %}
+          <button class="secondary"
+                  hx-post="{% url 'tournaments:set_match_status' slug=t.slug match_id=match.id %}"
+                  hx-vals='{"status": "live"}'
+                  hx-target="#match-{{ match.id }}" hx-swap="outerHTML">▶ In corso</button>
+        {% elif match.status == "live" %}
+          <button class="ghost"
+                  hx-post="{% url 'tournaments:set_match_status' slug=t.slug match_id=match.id %}"
+                  hx-vals='{"status": "scheduled"}'
+                  hx-target="#match-{{ match.id }}" hx-swap="outerHTML">⏸ Sospendi</button>
+        {% endif %}
+      {% endif %}
+      <button hx-get="{% url 'tournaments:score_match' slug=t.slug match_id=match.id %}"
+              hx-target="#match-{{ match.id }}" hx-swap="outerHTML">
+        {% if match.is_played %}Modifica{% else %}Punteggio{% endif %}
+      </button>
+    {% else %}
+      <span class="muted"><small>in attesa delle coppie</small></span>
+    {% endif %}
+  </div>
+</div>

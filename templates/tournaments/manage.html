@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione - {{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Gestione torneo</h1>
+  <p class="muted">
+    {{ team_count }} coppie · stato: {{ t.get_status_display }} ·
+    <a href="{% url 'tournaments:register' slug=t.slug %}">link iscrizione pubblica</a>
+  </p>
+
+  <div class="manage-actions">
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="draw">
+      <button type="submit">🎲 Sorteggia gironi</button></form>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="schedule">
+      <button type="submit" class="secondary">📅 Genera calendario</button></form>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="brackets">
+      <button type="submit" class="secondary" {% if not group_done %}disabled{% endif %}>🏆 Genera tabelloni</button></form>
+  </div>
+  {% if not group_done %}
+    <p class="muted"><small>I tabelloni si generano quando tutte le partite dei gironi sono concluse.</small></p>
+  {% endif %}
+
+  <h2>Aggiungi coppia</h2>
+  <form method="post" class="form-inline">{% csrf_token %}
+    <input type="hidden" name="action" value="add_team">
+    <input type="text" name="name" placeholder="Nome coppia" maxlength="120" required>
+    <input type="text" name="player1" placeholder="Giocatore 1" maxlength="80" required>
+    <input type="text" name="player2" placeholder="Giocatore 2" maxlength="80" required>
+    <button type="submit">Aggiungi</button>
+  </form>
+
+  <h2>Coppie</h2>
+  {% for g, teams in groups %}
+    <h3>Girone {{ g.name }} <span class="muted">({{ teams|length }})</span></h3>
+    {% for team in teams %}
+      <div class="manage-team">
+        <span>{{ team.name }} <small class="muted">{{ team.player1 }} · {{ team.player2 }}</small></span>
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="del_team"><input type="hidden" name="team_id" value="{{ team.id }}"><button class="ghost" type="submit" title="Elimina">✕</button></form>
+      </div>
+    {% empty %}
+      <p class="muted"><small>nessuna coppia</small></p>
+    {% endfor %}
+  {% endfor %}
+
+  {% if unassigned %}
+    <h3>Senza girone <span class="muted">({{ unassigned|length }})</span></h3>
+    {% for team in unassigned %}
+      <div class="manage-team">
+        <span>{{ team.name }} <small class="muted">{{ team.player1 }} · {{ team.player2 }}</small></span>
+        <form method="post">{% csrf_token %}<input type="hidden" name="action" value="del_team"><input type="hidden" name="team_id" value="{{ team.id }}"><button class="ghost" type="submit" title="Elimina">✕</button></form>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endblock %}

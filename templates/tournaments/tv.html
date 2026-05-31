@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Schermo - {{ t.name }}</title>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="tv">
+  <header class="tv-header">
+    <span>🎾 {{ t.name }} - Live</span>
+    <a href="{% url 'tournaments:live' slug=t.slug %}">Esci</a>
+  </header>
+  {# Auto-refresh dati ogni 30s; le scene ruotano ogni 15s via JS. #}
+  <main hx-get="{% url 'tournaments:tv_board' slug=t.slug %}" hx-trigger="every 30s" hx-swap="innerHTML">
+    {% include "tournaments/partials/_tv_board.html" %}
+  </main>
+  <script>
+    (function () {
+      var idx = 0;
+      function show() {
+        var scenes = document.querySelectorAll("#tv-board .tv-scene");
+        if (!scenes.length) return;
+        idx = idx % scenes.length;
+        scenes.forEach(function (s, i) { s.classList.toggle("is-shown", i === idx); });
+      }
+      show();
+      setInterval(function () { idx++; show(); }, 15000);
+      // Dopo il refresh dei dati, riapplica la scena corrente (evita il flash).
+      document.body.addEventListener("htmx:afterSettle", show);
+    })();
+  </script>
+</body>
+</html>

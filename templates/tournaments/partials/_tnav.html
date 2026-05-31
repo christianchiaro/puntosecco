@@ -1,0 +1,26 @@
+{# Header del torneo + sotto-navigazione con pagina attiva evidenziata. Richiede `t`. #}
+{% with active=request.resolver_match.url_name %}
+<div class="t-header">
+  <div class="t-header__top">
+    <h1 class="t-header__title"><a href="{% url 'tournaments:dashboard' slug=t.slug %}">{{ t.name }}</a></h1>
+    <span class="status-badge status-badge--{{ t.status }}">{{ t.get_status_display }}</span>
+  </div>
+  <p class="t-header__meta">{{ t.date }} · {{ t.num_teams }} coppie · {{ t.num_courts }} campi</p>
+  <nav class="tnav">
+    <a href="{% url 'tournaments:standings' slug=t.slug %}" class="{% if active == 'standings' %}is-active{% endif %}">Classifiche</a>
+    <a href="{% url 'tournaments:schedule' slug=t.slug %}" class="{% if active == 'schedule' %}is-active{% endif %}">Calendario</a>
+    <a href="{% url 'tournaments:brackets' slug=t.slug %}" class="{% if active == 'brackets' %}is-active{% endif %}">Tabelloni</a>
+    <a href="{% url 'tournaments:live' slug=t.slug %}" class="{% if active == 'live' %}is-active{% endif %}">Live</a>
+    <a href="{% url 'tournaments:stats' slug=t.slug %}" class="{% if active == 'stats' %}is-active{% endif %}">Statistiche</a>
+    <a href="{% url 'tournaments:albo' slug=t.slug %}" class="{% if active == 'albo' %}is-active{% endif %}">Albo d'oro</a>
+    <a href="{% url 'tournaments:score_log' slug=t.slug %}" class="{% if active == 'score_log' %}is-active{% endif %}">Registro</a>
+    {% if t.status == 'setup' %}
+      <a href="{% url 'tournaments:register' slug=t.slug %}" class="{% if active == 'register' %}is-active{% endif %}">Iscrizione</a>
+    {% endif %}
+    <a href="{% url 'tournaments:score_panel' slug=t.slug %}" class="tnav__staff {% if active == 'score_panel' %}is-active{% endif %}">Punteggi</a>
+    {% if request.user.is_staff %}
+      <a href="{% url 'tournaments:manage' slug=t.slug %}" class="tnav__staff {% if active == 'manage' %}is-active{% endif %}">Gestione</a>
+    {% endif %}
+  </nav>
+</div>
+{% endwith %}

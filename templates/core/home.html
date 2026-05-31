@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Punto Secco - Tornei{% endblock %}
+
+{% block content %}
+  <div class="dash-section__head">
+    <h1>Tornei</h1>
+    {% if request.user.is_staff %}
+      <a class="btn" href="{% url 'tournaments:new' %}">+ Nuovo torneo</a>
+    {% endif %}
+  </div>
+
+  {% if tournaments %}
+    <div class="cards">
+      {% for t in tournaments %}
+        <a class="card tournament-card" href="{% url 'tournaments:dashboard' slug=t.slug %}">
+          <span class="tournament-card__name">{{ t.name }}</span>
+          <span class="muted">{{ t.date }} · {{ t.num_teams }} coppie</span>
+          <span class="status-badge status-badge--{{ t.status }}">{{ t.get_status_display }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">Nessun torneo ancora.</p>
+  {% endif %}
+{% endblock %}
