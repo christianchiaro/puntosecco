@@ -1,0 +1,48 @@
+{# Partial ricaricato ogni 30s dalla pagina match_detail. Richiede `match`, `t`. #}
+<div id="match-live-score">
+  {% if match.walkover %}
+    <div class="match-live__score match-live__score--done">W.O.</div>
+    <p class="muted">Vittoria a tavolino - {{ match.winner.name }}</p>
+  {% elif match.score_display %}
+    <div class="match-live__score {% if match.is_played %}match-live__score--done{% else %}match-live__score--live{% endif %}">
+      {{ match.score_display }}
+    </div>
+    {% if match.had_bagel %}
+      <span class="bagel" title="Cappotto 6-0">🔥</span>
+    {% endif %}
+  {% elif match.status == "live" %}
+    <div class="match-live__score match-live__score--live match-live__score--empty">in gioco</div>
+  {% else %}
+    <div class="match-live__score match-live__score--scheduled">-</div>
+  {% endif %}
+
+  <div class="match-live__teams">
+    <div class="match-live__team {% if match.winner_id == match.team_a_id and match.is_played %}is-win{% endif %}">
+      {% if match.team_a %}
+        <a href="{% url 'tournaments:team' slug=t.slug team_id=match.team_a_id %}">{{ match.team_a.name }}</a>
+      {% else %}
+        <span class="tbd">da definire</span>
+      {% endif %}
+      {% if match.is_played and match.winner_id == match.team_a_id %}<span class="match__team is-win">✓</span>{% endif %}
+    </div>
+    <span class="match-live__vs">vs</span>
+    <div class="match-live__team {% if match.winner_id == match.team_b_id and match.is_played %}is-win{% endif %}">
+      {% if match.team_b %}
+        <a href="{% url 'tournaments:team' slug=t.slug team_id=match.team_b_id %}">{{ match.team_b.name }}</a>
+      {% else %}
+        <span class="tbd">da definire</span>
+      {% endif %}
+      {% if match.is_played and match.winner_id == match.team_b_id %}<span class="match__team is-win">✓</span>{% endif %}
+    </div>
+  </div>
+
+  {% if match.status == "live" %}
+    <div class="match-status match-status--live">● IN CORSO</div>
+  {% elif match.status == "done" %}
+    <div class="match-status match-status--done">FINITA</div>
+  {% else %}
+    <div class="match-status match-status--scheduled">
+      {% if match.scheduled_start %}{{ match.scheduled_start|time:"H:i" }} - {% endif %}PROGRAMMATA
+    </div>
+  {% endif %}
+</div>

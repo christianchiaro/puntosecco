@@ -32,4 +32,20 @@ urlpatterns = [
         views.set_match_status,
         name="set_match_status",
     ),
+    # Pagina partita pubblica
+    path(
+        "t/<slug:slug>/partita/<int:match_id>/",
+        views.match_detail,
+        name="match_detail",
+    ),
+    path(
+        "t/<slug:slug>/partita/<int:match_id>/live/",
+        views.match_live,
+        name="match_live",
+    ),
+    path(
+        "t/<slug:slug>/partita/<int:match_id>/og.png",
+        views.match_og_image,
+        name="match_og_image",
+    ),
 ]

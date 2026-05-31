@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ match.team_a.name|default:"?" }} vs {{ match.team_b.name|default:"?" }} - {{ t.name }}{% endblock %}
+
+{% block og_title %}{{ match.team_a.name|default:"?" }} vs {{ match.team_b.name|default:"?" }}{% endblock %}
+{% block og_description %}{% if match.score_display %}{{ match.score_display }} - {% endif %}{{ match.get_phase_display }} {{ match.round_label }} - {{ t.name }}{% endblock %}
+{% block og_image %}{{ og_image_url }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+
+  <div class="match-detail">
+    <div class="match-detail__meta muted">
+      {% if match.court %}{{ match.court }}{% endif %}
+      {% if match.round_label %} · {{ match.round_label }}{% endif %}
+      {% if match.group %} - Girone {{ match.group.name }}{% endif %}
+      {% if match.scheduled_start %} · {{ match.scheduled_start|time:"H:i" }}{% endif %}
+    </div>
+
+    {# Score: si ricarica ogni 30s via polling HTMX se la partita è in corso #}
+    {% if match.status == "live" %}
+      <div hx-get="{% url 'tournaments:match_live' slug=t.slug match_id=match.id %}"
+           hx-trigger="every 30s"
+           hx-swap="innerHTML">
+        {% include "tournaments/partials/_match_live.html" %}
+      </div>
+    {% else %}
+      {% include "tournaments/partials/_match_live.html" %}
+    {% endif %}
+
+    {# Set per set #}
+    {% if match.sets.all %}
+      <div class="match-detail__sets">
+        <h3>Set</h3>
+        {% for s in match.sets.all %}
+          <div class="match-detail__set">
+            <span class="muted">Set {{ s.number }}</span>
+            <strong>{{ s.display }}</strong>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {# QR e condivisione #}
+    <div class="live-actions" x-data="{ qr: false }">
+      {% include "tournaments/partials/_share.html" %}
+      <button class="secondary" type="button" @click="qr = !qr" x-text="qr ? 'Nascondi QR' : '📱 Condividi QR'">📱 Condividi QR</button>
+      <div x-show="qr" x-cloak class="qr-box">
+        <img src="{{ qr_data_uri }}" alt="QR link partita" width="150" height="150">
+        <small class="muted">Scan per seguire questa partita</small>
+      </div>
+    </div>
+  </div>
+{% endblock %}

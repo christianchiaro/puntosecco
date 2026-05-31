@@ -1,5 +1,6 @@
 {# Pillola partita riusabile (calendario, tabelloni, live, pagina squadra). Richiede `match` e `t`. #}
 <div class="match match--{{ match.status }}">
+  <a class="match__link" href="{% url 'tournaments:match_detail' slug=t.slug match_id=match.id %}">dettagli</a>
   <span class="match__team {% if match.winner_id and match.winner_id == match.team_a_id %}is-win{% endif %}">
     {% if match.team_a %}<a href="{% url 'tournaments:team' slug=t.slug team_id=match.team_a_id %}">{{ match.team_a.name }}</a>{% else %}<span class="tbd">da definire</span>{% endif %}
   </span>

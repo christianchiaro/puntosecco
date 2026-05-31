@@ -257,6 +257,20 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .manage-team form { display: inline; margin: 0; }
 .hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 
+/* Pagina singola partita */
+.match-detail { max-width: 36rem; }
+.match-detail__meta { margin-bottom: .75rem; font-size: .9rem; }
+.match-live__score { font-size: clamp(3rem, 12vw, 5rem); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; margin: .5rem 0; }
+.match-live__score--live { color: var(--live); }
+.match-live__score--done { color: var(--primary); }
+.match-live__score--scheduled { color: var(--muted); }
+.match-live__score--empty { font-size: 2rem; font-style: italic; }
+.match-live__teams { display: flex; flex-direction: column; gap: .35rem; margin: .75rem 0; font-size: 1.25rem; font-weight: 600; }
+.match-live__team.is-win { color: var(--primary-ink); }
+.match-live__vs { color: var(--muted); font-weight: 400; font-size: .9rem; }
+.match-detail__sets { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+.match-detail__set { background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; padding: .3rem .7rem; display: flex; gap: .5rem; align-items: center; }
+
 /* Registro modifiche */
 .log-row { display: flex; align-items: baseline; gap: .7rem; padding: .5rem 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .log-time { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--muted); }
@@ -281,6 +295,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .match__team { display: flex; align-items: center; gap: .35rem; }
 .match__team.is-win { font-weight: 700; }
 .match__team.is-win::after { content: "✓"; color: var(--primary); font-size: .8rem; }
+.match__link { font-size: .72rem; color: var(--muted); float: right; }
 .match__score { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .88rem; margin-top: .15rem; }
 .match-status { font-size: .68rem; font-weight: 700; text-transform: uppercase; padding: .05rem .35rem; border-radius: .25rem; }
 .match-status--live { background: var(--live-bg); color: var(--live); }

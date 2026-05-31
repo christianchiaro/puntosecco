@@ -1,9 +1,11 @@
 import datetime
+import io
 import json
 
 import segno
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -578,4 +580,191 @@ def set_match_status(request, slug, match_id):
     )
     label = "In corso" if match.status == Match.Status.LIVE else "Programmata"
     resp["HX-Trigger"] = json.dumps({"toast": {"message": f"Stato: {label}"}})
+    return resp
+
+
+# --- Pagina partita + OG image -----------------------------------------------
+
+
+def match_detail(request, slug, match_id):
+    t = _tournament(slug)
+    match = get_object_or_404(
+        Match.objects.select_related(
+            "team_a", "team_b", "court", "group"
+        ).prefetch_related("sets"),
+        pk=match_id,
+        tournament=t,
+    )
+    match_url = request.build_absolute_uri(
+        reverse(
+            "tournaments:match_detail", kwargs={"slug": t.slug, "match_id": match.id}
+        )
+    )
+    og_image_url = request.build_absolute_uri(
+        reverse(
+            "tournaments:match_og_image", kwargs={"slug": t.slug, "match_id": match.id}
+        )
+    )
+    qr_data_uri = segno.make(match_url, error="m").svg_data_uri(scale=4)
+    return render(
+        request,
+        "tournaments/match_detail.html",
+        {
+            "t": t,
+            "match": match,
+            "qr_data_uri": qr_data_uri,
+            "og_image_url": og_image_url,
+        },
+    )
+
+
+def match_live(request, slug, match_id):
+    """Partial ricaricato in polling dalla pagina match_detail."""
+    t = _tournament(slug)
+    match = get_object_or_404(
+        Match.objects.select_related(
+            "team_a", "team_b", "court", "group"
+        ).prefetch_related("sets"),
+        pk=match_id,
+        tournament=t,
+    )
+    return render(
+        request,
+        "tournaments/partials/_match_live.html",
+        {"t": t, "match": match},
+    )
+
+
+def match_og_image(request, slug, match_id):
+    """Genera un'immagine PNG 640x340 per l'Open Graph della pagina partita."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    t = _tournament(slug)
+    match = get_object_or_404(
+        Match.objects.select_related(
+            "team_a", "team_b", "court", "group"
+        ).prefetch_related("sets"),
+        pk=match_id,
+        tournament=t,
+    )
+
+    W, H = 640, 340
+    BG = (14, 124, 102)  # #0e7c66
+    WHITE = (255, 255, 255)
+    GREY_LIGHT = (180, 200, 190)
+    GREY_MID = (130, 160, 150)
+    GREEN_BRIGHT = (43, 185, 154)  # #2bb99a
+    RED_BADGE = (210, 64, 60)  # #d2403c
+    DARK_BADGE = (8, 70, 58)
+
+    def load_font(size, bold=False):
+        paths = [
+            (
+                "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+                if bold
+                else "/System/Library/Fonts/Supplemental/Arial.ttf"
+            ),
+            (
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+                if bold
+                else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+            ),
+            (
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+                if bold
+                else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+            ),
+        ]
+        for path in paths:
+            try:
+                return ImageFont.truetype(path, size)
+            except (OSError, IOError):
+                continue
+        return ImageFont.load_default()
+
+    img = Image.new("RGB", (W, H), BG)
+    draw = ImageDraw.Draw(img)
+
+    font_small = load_font(22)
+    font_team = load_font(42, bold=True)
+    font_vs = load_font(26)
+    font_score = load_font(68, bold=True)
+    font_badge = load_font(20, bold=True)
+    font_brand = load_font(18)
+
+    # Torneo name - top left
+    draw.text((24, 18), t.name, font=font_small, fill=GREY_LIGHT)
+
+    # Team A
+    team_a_name = match.team_a.name if match.team_a else "da definire"
+    team_b_name = match.team_b.name if match.team_b else "da definire"
+
+    # Highlight winner in bright green
+    col_a = (
+        GREEN_BRIGHT
+        if (match.winner_id and match.winner_id == match.team_a_id)
+        else WHITE
+    )
+    col_b = (
+        GREEN_BRIGHT
+        if (match.winner_id and match.winner_id == match.team_b_id)
+        else WHITE
+    )
+
+    center_x = W // 2
+    draw.text((center_x, 60), team_a_name, font=font_team, fill=col_a, anchor="mm")
+    draw.text((center_x, 108), "vs", font=font_vs, fill=GREY_MID, anchor="mm")
+    draw.text((center_x, 155), team_b_name, font=font_team, fill=col_b, anchor="mm")
+
+    # Score
+    score = match.score_display or "in gioco"
+    score_color = WHITE if match.status == Match.Status.DONE else GREEN_BRIGHT
+    draw.text((center_x, 220), score, font=font_score, fill=score_color, anchor="mm")
+
+    # Status badge
+    if match.status == Match.Status.LIVE:
+        badge_text = "IN CORSO"
+        badge_fill = RED_BADGE
+    elif match.status == Match.Status.DONE:
+        badge_text = "FINITA"
+        badge_fill = DARK_BADGE
+    else:
+        badge_text = "PROGRAMMATA"
+        badge_fill = DARK_BADGE
+
+    bbox = draw.textbbox((0, 0), badge_text, font=font_badge)
+    bw = bbox[2] - bbox[0] + 20
+    bh = bbox[3] - bbox[1] + 10
+    bx = 24
+    by = H - bh - 24
+    draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=6, fill=badge_fill)
+    draw.text((bx + 10, by + 5), badge_text, font=font_badge, fill=WHITE)
+
+    # Round label + court
+    meta_parts = []
+    if match.round_label:
+        meta_parts.append(match.round_label)
+    if match.group:
+        meta_parts.append(f"Girone {match.group.name}")
+    if match.court:
+        meta_parts.append(str(match.court))
+    if meta_parts:
+        draw.text(
+            (bx + bw + 16, by + 5),
+            "  ".join(meta_parts),
+            font=font_badge,
+            fill=GREY_LIGHT,
+        )
+
+    # Brand bottom right
+    draw.text(
+        (W - 24, H - 24), "Punto Secco", font=font_brand, fill=GREY_MID, anchor="rs"
+    )
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+
+    resp = HttpResponse(buf.read(), content_type="image/png")
+    resp["Cache-Control"] = "no-store"
     return resp
