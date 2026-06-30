@@ -267,7 +267,7 @@ def _tv_context(tournament):
         if nxt and nxt.team_a_id and nxt.team_b_id:
             ticker.append({"court": c, "match": nxt})
 
-    groups = [(g, group_standings(g)) for g in tournament.groups.all()]
+    groups = _standings_groups(tournament)
     champ = champion(tournament)
     has_ko = tournament.matches.filter(
         phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]
