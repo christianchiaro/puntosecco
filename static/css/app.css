@@ -327,6 +327,15 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .badge--spareggio { flex: none; background: var(--live-bg); color: var(--live); text-decoration: none; white-space: nowrap; }
 .badge--spareggio:hover { text-decoration: none; filter: brightness(.97); }
 
+/* Classifica finale (gold 1°-8°, silver 1°-4°) */
+.final-rank { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1.5rem; align-items: start; }
+.rank-list { list-style: none; margin: .5rem 0 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.rank-list__row { display: flex; align-items: center; gap: .8rem; padding: .65rem .95rem; border-top: 1px solid var(--border); }
+.rank-list__row:first-child { border-top: none; }
+.rank-list__row.is-podium { background: var(--done-bg); }
+.rank-list__pos { width: 2rem; text-align: center; font-weight: 700; font-size: 1.05rem; flex: none; }
+.rank-list__team { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Banner spareggio: avviso cliccabile in cima alle classifiche */
 .spareggio-banner {
   display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;

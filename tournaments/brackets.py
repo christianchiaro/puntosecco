@@ -17,7 +17,6 @@ _ROUND_NAMES = {
     8: "Ottavi",
     16: "Sedicesimi",
 }
-_ROUND_SEQUENCE = ["Sedicesimi", "Ottavi", "Quarti", "Semifinale"]
 
 
 def _round_name(num_matches):
@@ -121,6 +120,48 @@ def _build_phase_bracket(tournament, phase, seeds):
             source_b_role=Match.SourceRole.LOSER,
         )
 
+    # Consolazione 5\xb0-8\xb0: se il primo turno sono i quarti (4 partite), i 4 perdenti
+    # si giocano i piazzamenti -> 2 semifinali di consolazione, poi finale 5\xb0/6\xb0 e 7\xb0/8\xb0.
+    # Cosi' tutte le coppie del tabellone hanno un piazzamento univoco.
+    loser = Match.SourceRole.LOSER
+    qf = rounds[0]
+    if len(qf) == 4:
+        cons_sf = []
+        for pos, (a, b) in enumerate(((qf[0], qf[1]), (qf[2], qf[3])), start=1):
+            cons_sf.append(
+                Match.objects.create(
+                    tournament=tournament,
+                    phase=phase,
+                    round_label="Semifinale 5\xb0-8\xb0",
+                    bracket_pos=pos,
+                    slot_span=2,
+                    source_a=a,
+                    source_a_role=loser,
+                    source_b=b,
+                    source_b_role=loser,
+                )
+            )
+        Match.objects.create(
+            tournament=tournament,
+            phase=phase,
+            round_label="Finale 5\xb0/6\xb0",
+            bracket_pos=1,
+            slot_span=2,
+            source_a=cons_sf[0],
+            source_b=cons_sf[1],
+        )
+        Match.objects.create(
+            tournament=tournament,
+            phase=phase,
+            round_label="Finale 7\xb0/8\xb0",
+            bracket_pos=2,
+            slot_span=2,
+            source_a=cons_sf[0],
+            source_a_role=loser,
+            source_b=cons_sf[1],
+            source_b_role=loser,
+        )
+
 
 def seed_brackets(tournament):
     """Crea le partite di gold e silver dai risultati dei gironi e le programma.
@@ -206,8 +247,22 @@ def _knockout_round_groups(tournament):
             phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]
         ).values_list("round_label", flat=True)
     )
-    groups = [[lbl] for lbl in _ROUND_SEQUENCE if lbl in present]
-    finals = [lbl for lbl in ("Finale", "Finale 3\xb0/4\xb0") if lbl in present]
+    groups = [[lbl] for lbl in ("Sedicesimi", "Ottavi", "Quarti") if lbl in present]
+    # Le semifinali di consolazione (5\xb0-8\xb0) si giocano insieme alle semifinali.
+    semis = [lbl for lbl in ("Semifinale", "Semifinale 5\xb0-8\xb0") if lbl in present]
+    if semis:
+        groups.append(semis)
+    # Tutte le finali (incluse 5\xb0/6\xb0 e 7\xb0/8\xb0) nello stesso turno.
+    finals = [
+        lbl
+        for lbl in (
+            "Finale",
+            "Finale 3\xb0/4\xb0",
+            "Finale 5\xb0/6\xb0",
+            "Finale 7\xb0/8\xb0",
+        )
+        if lbl in present
+    ]
     if finals:
         groups.append(finals)
     return groups

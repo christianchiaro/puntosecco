@@ -19,4 +19,20 @@
       {% if data.terzo %}{% include "tournaments/partials/_match_pill.html" with match=data.terzo %}{% else %}<p class="tbd">-</p>{% endif %}
     </div>
   </div>
+
+  {% if data.cons_semi %}
+    <h3 class="bracket__subtitle">Consolazione 5°-8°</h3>
+    <div class="bracket__cols">
+      <div class="bracket__col">
+        <h3>Semifinali</h3>
+        {% for m in data.cons_semi %}{% include "tournaments/partials/_match_pill.html" with match=m %}{% endfor %}
+      </div>
+      <div class="bracket__col">
+        <h3>5°/6° posto</h3>
+        {% if data.finale_56 %}{% include "tournaments/partials/_match_pill.html" with match=data.finale_56 %}{% else %}<p class="tbd">-</p>{% endif %}
+        <h3>7°/8° posto</h3>
+        {% if data.finale_78 %}{% include "tournaments/partials/_match_pill.html" with match=data.finale_78 %}{% else %}<p class="tbd">-</p>{% endif %}
+      </div>
+    </div>
+  {% endif %}
 </section>

@@ -5,12 +5,14 @@ Caricate solo quando si lavora qui. Sono le regole di dominio di Punto Secco.
 ## Formato (default, parametrico nel modello `Tournament`)
 - **12 coppie, 3 gironi (A-C) da 4**, 4 campi, slot da 25 min.
 - **Gironi**: girone all'italiana → 6 partite/girone, 18 totali. Partita = **1 set** con tie-break. `slot_span=1`.
-- **Knockout gold (8 squadre)**: prime 2 di ogni girone + 2 migliori terze (wild card) → quarti → semifinali → finale + 3°/4°.
-- **Knockout silver (4 squadre)**: peggior terza + 3 quarte → semifinali → finale + 3°/4° (niente quarti).
+- **Knockout gold (8 squadre)**: prime 2 di ogni girone + 2 migliori terze (wild card) → quarti → semifinali → finale + 3°/4°. I **perdenti dei quarti** giocano la **consolazione 5°-8°** (2 semifinali → finale 5°/6° + 7°/8°), così tutte le 8 coppie hanno un piazzamento univoco.
+- **Knockout silver (4 squadre)**: peggior terza + 3 quarte → semifinali → finale + 3°/4° (niente quarti, niente consolazione).
 - Partita knockout = **2 set + super tie-break a 10 se 1-1**. `slot_span=2` (occupa 2 slot).
+- **Classifica finale** (`/classifica/`, `awards.phase_classification`): divisa per tabellone - gold 1°-8°, silver 1°-4°.
 
-## Timing (entra esatto nei 14 slot)
-Gironi 6 slot (3 turni × 2 slot) + quarti 4 + semifinali 2 + finali/3°-4° 2 = **14 slot**.
+## Timing
+Slot assegnati dinamicamente da `schedule_knockout`. Per il formato a 12: gironi + knockout
+(quarti, semifinali + consolazione 5°-8°, finali) entrano comodamente nei campi disponibili.
 
 ## Vincoli scheduler (`scheduling.py`) - coperti da test
 - ogni coppia gioca tutte le altre del girone una volta;

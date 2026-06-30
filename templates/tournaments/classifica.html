@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Classifica finale - {{ t.name }}{% endblock %}
+{% block og_title %}Classifica finale - {{ t.name }}{% endblock %}
+
+{% block content %}
+  {% include "tournaments/partials/_tnav.html" %}
+  <h1>Classifica finale</h1>
+  <p class="muted">Piazzamenti per tabellone. I posti si completano man mano che le finali vengono giocate.</p>
+
+  <div class="final-rank">
+    {% include "tournaments/partials/_final_rank.html" with title="🏆 Gold" rows=gold %}
+    {% include "tournaments/partials/_final_rank.html" with title="🥈 Silver" rows=silver %}
+  </div>
+{% endblock %}

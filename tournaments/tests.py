@@ -6,7 +6,13 @@ from django.urls import reverse
 
 from .setup import create_tournament, draw_groups
 
-from .awards import champion, podium, team_achievements, tournament_awards
+from .awards import (
+    champion,
+    final_classification,
+    podium,
+    team_achievements,
+    tournament_awards,
+)
 from .brackets import schedule_knockout, seed_brackets
 from .models import Court, Group, Match, Team, Tournament
 from .scheduling import generate_group_stage, round_robin_rounds, slot_start
@@ -60,7 +66,15 @@ def play_all_groups_by_seed(tournament):
 
 def play_full_knockout(tournament):
     """Gioca tutto il knockout (team_a vince 2-0) rispettando l'ordine delle dipendenze."""
-    for label in ("Quarti", "Semifinale", "Finale", "Finale 3°/4°"):
+    for label in (
+        "Quarti",
+        "Semifinale",
+        "Semifinale 5°-8°",
+        "Finale",
+        "Finale 3°/4°",
+        "Finale 5°/6°",
+        "Finale 7°/8°",
+    ):
         for m in tournament.matches.filter(
             round_label=label, phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]
         ):
@@ -375,11 +389,16 @@ class BracketTests(TestCase):
         return self.t.matches.filter(phase__in=[Match.Phase.GOLD, Match.Phase.SILVER])
 
     def test_knockout_match_count(self):
-        # Per tabellone: 4 quarti + 2 semi + 1 finale + 1 terzo/quarto = 8. ×2 = 16.
-        self.assertEqual(self._ko().count(), 16)
+        # Per tabellone (8 coppie): 4 quarti + 2 semi + 1 finale + 1 terzo/quarto +
+        # consolazione (2 semi 5°-8° + finale 5°/6° + finale 7°/8°) = 12. ×2 = 24.
+        self.assertEqual(self._ko().count(), 24)
         self.assertEqual(self._ko().filter(round_label="Quarti").count(), 8)
         self.assertEqual(self._ko().filter(round_label="Finale").count(), 2)
         self.assertEqual(self._ko().filter(round_label="Finale 3°/4°").count(), 2)
+        # Consolazione 5°-8° in entrambi i tabelloni.
+        self.assertEqual(self._ko().filter(round_label="Semifinale 5°-8°").count(), 4)
+        self.assertEqual(self._ko().filter(round_label="Finale 5°/6°").count(), 2)
+        self.assertEqual(self._ko().filter(round_label="Finale 7°/8°").count(), 2)
 
     def test_gold_quarter_seeding(self):
         # Seeding a incrocio: la testa di serie (A1) incontra una 2ª di un altro girone.
@@ -435,10 +454,11 @@ class BracketTests(TestCase):
                 self.assertNotIn(key, occupied, f"Conflitto campo allo slot {s}")
                 occupied.add(key)
 
-    def test_whole_tournament_fits_in_14_slots(self):
-        total = schedule_knockout(self.t)  # ritorna slot totali (gironi + knockout)
-        self.assertLessEqual(total, 14)
-        self.assertEqual(total, 14)  # entra esatto
+    def test_whole_tournament_slot_count(self):
+        # 16 coppie: gironi (6) + knockout con consolazione 5°-8° in entrambi i
+        # tabelloni (quarti 4 + semifinali 4 + finali 4) = 18 slot.
+        total = schedule_knockout(self.t)  # slot totali (gironi + knockout)
+        self.assertEqual(total, 18)
 
     def test_winner_advances_to_semifinal(self):
         qf1 = self.t.matches.get(
@@ -1403,6 +1423,67 @@ class WildCardBracketTest(TestCase):
             self.assertIn(rows[1]["team"].id, gold)
             self.assertNotIn(rows[2]["team"].id, gold)  # terze in silver
             self.assertNotIn(rows[3]["team"].id, gold)
+
+    def test_gold_has_consolation_silver_does_not(self):
+        """Il gold (8 coppie) ha la consolazione 5°-8°; il silver (4 coppie) no."""
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        resolve_spareggio(t)
+        seed_brackets(t)
+        gold = t.matches.filter(phase=Match.Phase.GOLD)
+        self.assertEqual(gold.filter(round_label="Semifinale 5°-8°").count(), 2)
+        self.assertEqual(gold.filter(round_label="Finale 5°/6°").count(), 1)
+        self.assertEqual(gold.filter(round_label="Finale 7°/8°").count(), 1)
+        silver = t.matches.filter(phase=Match.Phase.SILVER)
+        self.assertEqual(silver.filter(round_label="Semifinale 5°-8°").count(), 0)
+
+    def test_qf_losers_feed_consolation(self):
+        """I 4 perdenti dei quarti gold popolano le 2 semifinali di consolazione."""
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        resolve_spareggio(t)
+        seed_brackets(t)
+        losers = []
+        for m in t.matches.filter(
+            phase=Match.Phase.GOLD, round_label="Quarti"
+        ).order_by("bracket_pos"):
+            record_match_score(
+                m, [{"games_a": 6, "games_b": 2}, {"games_a": 6, "games_b": 3}]
+            )
+            losers.append(m.loser.id)
+        cons_teams = set()
+        for m in t.matches.filter(
+            phase=Match.Phase.GOLD, round_label="Semifinale 5°-8°"
+        ):
+            cons_teams.add(m.team_a_id)
+            cons_teams.add(m.team_b_id)
+        self.assertEqual(cons_teams, set(losers))
+
+    def test_final_classification_is_unique(self):
+        """A torneo concluso: gold 1°-8° e silver 1°-4°, tutti univoci."""
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        resolve_spareggio(t)
+        seed_brackets(t)
+        play_full_knockout(t)
+        cls = final_classification(t)
+        self.assertEqual([r["pos"] for r in cls["gold"]], [1, 2, 3, 4, 5, 6, 7, 8])
+        gold_ids = [r["team"].id for r in cls["gold"]]
+        self.assertEqual(len(set(gold_ids)), 8)  # 8 coppie distinte
+        self.assertEqual([r["pos"] for r in cls["silver"]], [1, 2, 3, 4])
+        silver_ids = [r["team"].id for r in cls["silver"]]
+        self.assertEqual(len(set(silver_ids)), 4)
+
+    def test_classifica_page_ok(self):
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        resolve_spareggio(t)
+        seed_brackets(t)
+        resp = self.client.get(
+            reverse("tournaments:classifica", kwargs={"slug": t.slug})
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Classifica finale")
 
     def test_invalid_format_raises_value_error(self):
         """3 gironi x 3 coppie (9 totali) deve sollevare ValueError."""

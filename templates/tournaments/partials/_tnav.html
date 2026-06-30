@@ -10,6 +10,7 @@
     <a href="{% url 'tournaments:standings' slug=t.slug %}" class="{% if active == 'standings' %}is-active{% endif %}">Classifiche</a>
     <a href="{% url 'tournaments:schedule' slug=t.slug %}" class="{% if active == 'schedule' %}is-active{% endif %}">Calendario</a>
     <a href="{% url 'tournaments:brackets' slug=t.slug %}" class="{% if active == 'brackets' %}is-active{% endif %}">Tabelloni</a>
+    <a href="{% url 'tournaments:classifica' slug=t.slug %}" class="{% if active == 'classifica' %}is-active{% endif %}">Classifica finale</a>
     <a href="{% url 'tournaments:live' slug=t.slug %}" class="{% if active == 'live' %}is-active{% endif %}">Live</a>
     <a href="{% url 'tournaments:stats' slug=t.slug %}" class="{% if active == 'stats' %}is-active{% endif %}">Statistiche</a>
     <a href="{% url 'tournaments:albo' slug=t.slug %}" class="{% if active == 'albo' %}is-active{% endif %}">Albo d'oro</a>

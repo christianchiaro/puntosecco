@@ -9,7 +9,13 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from .awards import champion, podium, team_achievements, tournament_awards
+from .awards import (
+    champion,
+    final_classification,
+    podium,
+    team_achievements,
+    tournament_awards,
+)
 from .bracket_svg import render_bracket_svg
 from .brackets import seed_brackets
 from .models import Match, ScoreLog, Team, Tournament
@@ -93,6 +99,12 @@ def bracket_data(tournament, phase):
         "semifinali": list(qs.filter(round_label="Semifinale").order_by("bracket_pos")),
         "finale": qs.filter(round_label="Finale").first(),
         "terzo": qs.filter(round_label="Finale 3°/4°").first(),
+        # Consolazione 5°-8° (solo gold): 2 semifinali + finali 5°/6° e 7°/8°.
+        "cons_semi": list(
+            qs.filter(round_label="Semifinale 5°-8°").order_by("bracket_pos")
+        ),
+        "finale_56": qs.filter(round_label="Finale 5°/6°").first(),
+        "finale_78": qs.filter(round_label="Finale 7°/8°").first(),
     }
 
 
@@ -236,6 +248,16 @@ def brackets(request, slug):
             "gold": bracket_data(t, Match.Phase.GOLD),
             "silver": bracket_data(t, Match.Phase.SILVER),
         },
+    )
+
+
+def classifica(request, slug):
+    """Classifica finale del torneo, divisa per tabellone (gold 1°-8°, silver 1°-4°)."""
+    t = _tournament(slug)
+    return render(
+        request,
+        "tournaments/classifica.html",
+        {"t": t, **final_classification(t)},
     )
 
 

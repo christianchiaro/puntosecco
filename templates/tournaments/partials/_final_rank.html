@@ -1,0 +1,24 @@
+{# Classifica di un tabellone. Richiede `rows` (lista {pos, team}), `title`, `t`. #}
+<section class="final-rank__col">
+  <h2>{{ title }}</h2>
+  {% if rows %}
+    <ol class="rank-list">
+      {% for r in rows %}
+        <li class="rank-list__row{% if r.pos <= 3 %} is-podium{% endif %}">
+          <span class="rank-list__pos">
+            {% if r.pos == 1 %}🥇{% elif r.pos == 2 %}🥈{% elif r.pos == 3 %}🥉{% else %}{{ r.pos }}{% endif %}
+          </span>
+          <span class="rank-list__team">
+            {% if r.team %}
+              <a href="{% url 'tournaments:team' slug=t.slug team_id=r.team.id %}">{{ r.team.name }}</a>
+            {% else %}
+              <span class="tbd">da definire</span>
+            {% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="muted">Tabellone non ancora generato.</p>
+  {% endif %}
+</section>
