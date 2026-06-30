@@ -86,8 +86,8 @@
       <div class="tv-ticker__viewport">
         {# Track duplicato: l'animazione trasla del 50% per uno scorrimento continuo. #}
         <div class="tv-ticker__track">
-          {% for it in ticker %}<span class="tv-ticker__item">{{ it.match.scheduled_start|time:"H:i" }} · {{ it.court }} · {{ it.match.team_a.name }} / {{ it.match.team_b.name }}</span>{% endfor %}
-          {% for it in ticker %}<span class="tv-ticker__item" aria-hidden="true">{{ it.match.scheduled_start|time:"H:i" }} · {{ it.court }} · {{ it.match.team_a.name }} / {{ it.match.team_b.name }}</span>{% endfor %}
+          {% for it in ticker %}<span class="tv-ticker__item">{{ it.match.scheduled_start|time:"H:i" }} · {{ it.court }} · {{ it.match.team_a.name }} <span class="tv-vs">v</span> {{ it.match.team_b.name }}</span>{% endfor %}
+          {% for it in ticker %}<span class="tv-ticker__item" aria-hidden="true">{{ it.match.scheduled_start|time:"H:i" }} · {{ it.court }} · {{ it.match.team_a.name }} <span class="tv-vs">v</span> {{ it.match.team_b.name }}</span>{% endfor %}
         </div>
       </div>
     </div>

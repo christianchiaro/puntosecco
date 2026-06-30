@@ -214,6 +214,11 @@ body.tv main { padding-bottom: 4rem; }
 .tv-standings li.is-spareggio { color: #ffd9d7; }
 .tv-spareggio-alert { display: flex; align-items: center; justify-content: center; gap: .8rem; flex-wrap: wrap; margin: 1.2rem 1.5rem 0; padding: .9rem 1.2rem; border: 2px solid var(--live); border-radius: .8rem; background: rgba(255,111,106,.12); font-size: 1.35rem; }
 .tv-spareggio-alert__tag { background: var(--live); color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; padding: .25rem .7rem; border-radius: .4rem; }
+
+/* Frecce per cambiare scena a mano, nell'header accanto a "Esci" */
+.tv-header__actions { display: flex; align-items: center; gap: .6rem; }
+.tv-navbtn { width: 2.6rem; height: 2.6rem; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 1.7rem; line-height: 1; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.35); border-radius: .5rem; }
+.tv-navbtn:hover { background: rgba(255,255,255,.25); }
 .tv-standings b { margin-left: auto; }
 .tv-scene--podio { text-align: center; padding-top: 2rem; }
 .tv-trophy { font-size: 5rem; line-height: 1; }
@@ -225,6 +230,7 @@ body.tv main { padding-bottom: 4rem; }
 .tv-ticker__viewport { flex: 1; overflow: hidden; }
 .tv-ticker__track { display: inline-flex; gap: 2.5rem; white-space: nowrap; animation: ticker-scroll 25s linear infinite; will-change: transform; }
 .tv-ticker__item { font-variant-numeric: tabular-nums; font-size: 1.05rem; }
+.tv-vs { color: #8fb3a8; font-style: italic; font-weight: 700; }
 @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .tv-score--empty { color: #6f9b8d; font-style: italic; }
 
