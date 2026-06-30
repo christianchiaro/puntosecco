@@ -77,6 +77,9 @@ class Team(models.Model):
     group = models.ForeignKey(
         Group, null=True, blank=True, related_name="teams", on_delete=models.SET_NULL
     )
+    # Esito spareggio tra terze a pari merito per l'ultimo posto gold: più alto = passa.
+    # Conta solo come ultimo criterio quando vittorie/diff/game sono identici.
+    spareggio = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         ordering = ["group__name", "seed", "name"]

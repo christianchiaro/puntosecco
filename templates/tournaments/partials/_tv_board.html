@@ -38,7 +38,7 @@
           <h3>Girone {{ g.name }}</h3>
           <ol>
             {% for r in rows %}
-              <li class="{% if r.gold %}is-gold{% endif %}"><span class="tv-rank">{{ r.rank }}</span> <span class="tv-std-name">{{ r.team.name }}</span> <b>{{ r.wins }}V</b> <span class="tv-diff">{% if r.diff > 0 %}+{% endif %}{{ r.diff }}</span></li>
+              <li class="{% if r.gold %}is-gold{% endif %}"><span class="tv-rank">{{ r.rank }}</span> <span class="tv-std-name">{{ r.team.name }}{% if r.spareggio %} <span class="tv-spareggio">⚔ spareggio</span>{% endif %}</span> <b>{{ r.wins }}V</b> <span class="tv-diff">{% if r.diff > 0 %}+{% endif %}{{ r.diff }}</span></li>
             {% endfor %}
           </ol>
         </div>

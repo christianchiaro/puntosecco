@@ -15,6 +15,7 @@ urlpatterns = [
         views.standings_board,
         name="standings_board",
     ),
+    path("t/<slug:slug>/spareggio/", views.spareggio, name="spareggio"),
     path("t/<slug:slug>/calendario/", views.schedule, name="schedule"),
     path("t/<slug:slug>/tabelloni/", views.brackets, name="brackets"),
     path("t/<slug:slug>/live/", views.live, name="live"),

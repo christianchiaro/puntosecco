@@ -150,7 +150,55 @@ def gold_team_ids(groups, rows_by_group):
             thirds.append(rows[2])
 
     if wild_needed:
-        thirds.sort(key=lambda s: (s["wins"], s["diff"], s["gf"]), reverse=True)
+        # Criteri: vittorie → diff game → game fatti → esito spareggio (deciso a mano).
+        thirds.sort(key=_wildcard_key, reverse=True)
         for s in thirds[:wild_needed]:
             ids.add(s["team"].id)
     return ids
+
+
+def _wildcard_merit(s):
+    """Merito sportivo di una terza per le wild card (senza lo spareggio manuale)."""
+    return (s["wins"], s["diff"], s["gf"])
+
+
+def _wildcard_key(s):
+    """Ordinamento completo: merito sportivo + esito spareggio come ultimo criterio."""
+    return _wildcard_merit(s) + (s["team"].spareggio,)
+
+
+def wildcard_spareggio(groups, rows_by_group):
+    """Spareggio pendente per l'ultimo posto gold tra le terze a pari merito.
+
+    Ritorna {"teams": [Team, ...], "spots": n} se c'è un pari NON ancora risolto
+    (le coppie contese e quanti posti gold restano da assegnare tra loro), altrimenti None.
+    """
+    num_groups = len(groups)
+    if num_groups == 0:
+        return None
+    gold_size = _ceil_power_of_two(num_groups * 2)
+    wild_needed = max(0, gold_size - num_groups * 2)
+    if wild_needed == 0:
+        return None
+
+    thirds = [rows_by_group[g.id][2] for g in groups if len(rows_by_group[g.id]) >= 3]
+    if len(thirds) <= wild_needed:
+        return None  # tutte le terze entrano: nessuna contesa
+
+    thirds.sort(key=_wildcard_key, reverse=True)
+    # Nessun pari al confine sul MERITO sportivo → niente spareggio.
+    if _wildcard_merit(thirds[wild_needed - 1]) != _wildcard_merit(thirds[wild_needed]):
+        return None
+
+    boundary = _wildcard_merit(thirds[wild_needed - 1])
+    contested = [s for s in thirds if _wildcard_merit(s) == boundary]
+    better = sum(1 for s in thirds if _wildcard_merit(s) > boundary)
+    spots = wild_needed - better  # posti gold disponibili per le coppie contese
+    if not (0 < spots < len(contested)):
+        return None
+
+    # Già risolto se lo spareggio separa nettamente i primi `spots`.
+    contested.sort(key=lambda s: s["team"].spareggio, reverse=True)
+    if contested[spots - 1]["team"].spareggio != contested[spots]["team"].spareggio:
+        return None
+    return {"teams": [s["team"] for s in contested], "spots": spots}

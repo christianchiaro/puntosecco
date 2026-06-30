@@ -16,7 +16,7 @@ from .models import Match, ScoreLog, Team, Tournament
 from .scheduling import generate_group_stage, slot_start
 from .scoring import record_match_score, record_walkover, sets_from_post
 from .setup import create_tournament, draw_groups
-from .standings import group_standings, gold_team_ids
+from .standings import group_standings, gold_team_ids, wildcard_spareggio
 from .stats import tournament_stats
 
 staff_required = user_passes_test(lambda u: u.is_staff)
@@ -117,29 +117,38 @@ def live_context(tournament):
 
 # --- Viste --------------------------------------------------------------------
 def _standings_groups(tournament):
-    """Classifiche per girone, con ogni riga annotata `gold`=True se la coppia è
-    destinata al tabellone gold (prime 2 + migliori terze wild card), così il badge
-    riflette la qualificazione reale e non il solo piazzamento nel girone."""
+    """(groups, spareggio): classifiche per girone con ogni riga annotata.
+
+    `gold`=True se la coppia è destinata al tabellone gold (prime 2 + migliori terze
+    wild card); `spareggio`=True se è in un pari non risolto per l'ultimo posto gold.
+    `spareggio` (2° valore) = dict {teams, spots} se c'è uno spareggio pendente, altrimenti None.
+    """
     groups = list(tournament.groups.order_by("name"))
     rows_by_group = {g.id: group_standings(g) for g in groups}
     gold_ids = gold_team_ids(groups, rows_by_group)
+    pending = wildcard_spareggio(groups, rows_by_group)
+    contested_ids = {t.id for t in pending["teams"]} if pending else set()
     data = []
     for g in groups:
         rows = rows_by_group[g.id]
         for r in rows:
-            r["gold"] = r["team"].id in gold_ids
+            tid = r["team"].id
+            r["spareggio"] = tid in contested_ids
+            r["gold"] = tid in gold_ids and not r["spareggio"]
         data.append((g, rows))
-    return data
+    return data, pending
 
 
 def dashboard(request, slug):
     t = _tournament(slug)
+    groups, spareggio = _standings_groups(t)
     return render(
         request,
         "tournaments/dashboard.html",
         {
             "t": t,
-            "groups": _standings_groups(t),
+            "groups": groups,
+            "spareggio": spareggio,
             "champion": champion(t),
             **live_context(t),
         },
@@ -148,20 +157,62 @@ def dashboard(request, slug):
 
 def standings(request, slug):
     t = _tournament(slug)
+    groups, spareggio = _standings_groups(t)
     return render(
         request,
         "tournaments/standings.html",
-        {"t": t, "groups": _standings_groups(t)},
+        {"t": t, "groups": groups, "spareggio": spareggio},
     )
 
 
 def standings_board(request, slug):
     """Partial polled dalla pagina classifiche (auto-refresh ogni 60s)."""
     t = _tournament(slug)
+    groups, spareggio = _standings_groups(t)
     return render(
         request,
         "tournaments/partials/_standings_board.html",
-        {"t": t, "groups": _standings_groups(t)},
+        {"t": t, "groups": groups, "spareggio": spareggio},
+    )
+
+
+def spareggio(request, slug):
+    """Risolve a mano lo spareggio tra le terze a pari merito per l'ultimo posto gold.
+
+    Pubblico come lo scoring; la decisione è tracciata nel registro.
+    """
+    t = _tournament(slug)
+    _, pending = _standings_groups(t)
+    if not pending:
+        return redirect("tournaments:standings", slug=t.slug)
+
+    teams = pending["teams"]
+    spots = pending["spots"]
+    error = None
+    if request.method == "POST":
+        valid_ids = {tm.id for tm in teams}
+        chosen = {
+            int(w)
+            for w in request.POST.getlist("winner")
+            if w.isdigit() and int(w) in valid_ids
+        }
+        if len(chosen) != spots:
+            plural = "coppia" if spots == 1 else "coppie"
+            error = f"Seleziona esattamente {spots} {plural} che passano al gold."
+        else:
+            for tm in teams:
+                tm.spareggio = 1 if tm.id in chosen else 0
+                tm.save(update_fields=["spareggio"])
+            winners = ", ".join(tm.name for tm in teams if tm.id in chosen)
+            _log_score(
+                t, None, "spareggio", f"Spareggio gold: passa {winners}", request
+            )
+            return redirect("tournaments:standings", slug=t.slug)
+
+    return render(
+        request,
+        "tournaments/spareggio.html",
+        {"t": t, "teams": teams, "spots": spots, "error": error},
     )
 
 
@@ -267,7 +318,7 @@ def _tv_context(tournament):
         if nxt and nxt.team_a_id and nxt.team_b_id:
             ticker.append({"court": c, "match": nxt})
 
-    groups = _standings_groups(tournament)
+    groups, spareggio = _standings_groups(tournament)
     champ = champion(tournament)
     has_ko = tournament.matches.filter(
         phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]
@@ -276,6 +327,7 @@ def _tv_context(tournament):
         "board": board,
         "ticker": ticker,
         "groups": groups,
+        "spareggio": spareggio,
         "champion": champ,
         "podium_data": podium(tournament) if champ else None,
         "gold_bracket_svg": (

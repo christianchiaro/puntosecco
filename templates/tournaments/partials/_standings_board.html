@@ -1,4 +1,12 @@
-{# Tabelle classifiche per girone. Richiede `groups` (lista di (group, rows)) e `t`. #}
+{# Tabelle classifiche per girone. Richiede `groups`, `t`, `spareggio` (dict o None). #}
+{% if spareggio %}
+  <a class="spareggio-banner" href="{% url 'tournaments:spareggio' slug=t.slug %}">
+    <span class="spareggio-banner__tag">⚔ Spareggio</span>
+    <span>Pari merito per l'ultimo posto gold:
+      {% for tm in spareggio.teams %}<strong>{{ tm.name }}</strong>{% if not forloop.last %} · {% endif %}{% endfor %}.
+      Clicca per decidere chi passa al gold.</span>
+  </a>
+{% endif %}
 <div class="groups-grid">
   {% for g, rows in groups %}
     {% include "tournaments/partials/_standings_table.html" with group=g rows=rows %}

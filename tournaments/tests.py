@@ -11,7 +11,12 @@ from .brackets import schedule_knockout, seed_brackets
 from .models import Court, Group, Match, Team, Tournament
 from .scheduling import generate_group_stage, round_robin_rounds, slot_start
 from .scoring import record_match_score
-from .standings import gold_team_ids, group_ranking, group_standings
+from .standings import (
+    gold_team_ids,
+    group_ranking,
+    group_standings,
+    wildcard_spareggio,
+)
 
 
 def make_tournament(**kwargs):
@@ -63,6 +68,19 @@ def play_full_knockout(tournament):
                 record_match_score(
                     m, [{"games_a": 6, "games_b": 2}, {"games_a": 6, "games_b": 3}]
                 )
+
+
+def resolve_spareggio(tournament):
+    """Risolve un eventuale spareggio pendente promuovendo le prime coppie contese,
+    così seed_brackets non si blocca (riflette la decisione manuale dello staff)."""
+
+    groups = list(tournament.groups.order_by("name"))
+    rbg = {g.id: group_standings(g) for g in groups}
+    pending = wildcard_spareggio(groups, rbg)
+    if pending:
+        for tm in pending["teams"][: pending["spots"]]:
+            tm.spareggio = 1
+            tm.save(update_fields=["spareggio"])
 
 
 class TournamentModelTests(TestCase):
@@ -1155,6 +1173,7 @@ class WildCardBracketTest(TestCase):
         """Con 3 gironi x 4, gold ha 8 coppie in QF e silver ha 4 coppie in SF."""
         t = self._setup_3group()
         play_all_groups_by_seed(t)
+        resolve_spareggio(t)  # le 3 terze sono a pari merito: decido lo spareggio
         seed_brackets(t)
 
         # Gold: 4 partite di quarti, tutte con entrambe le coppie assegnate.
@@ -1222,6 +1241,7 @@ class WildCardBracketTest(TestCase):
         # Verifichiamo tramite la classifica effettiva.
         ranking_c = group_ranking(group_c)
 
+        resolve_spareggio(t)  # eventuale pari tra le altre due terze
         seed_brackets(t)
 
         # Raccogli le coppie in gold QF.
@@ -1297,6 +1317,57 @@ class WildCardBracketTest(TestCase):
             all_ko_teams.add(m.team_a_id)
             all_ko_teams.add(m.team_b_id)
         self.assertEqual(len(all_ko_teams), 16)
+
+    def test_spareggio_pending_when_thirds_tie(self):
+        """3 terze a pari merito per 2 posti gold → spareggio pendente, seed bloccato."""
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        groups = list(t.groups.order_by("name"))
+        rbg = {g.id: group_standings(g) for g in groups}
+        pending = wildcard_spareggio(groups, rbg)
+        self.assertIsNotNone(pending)
+        self.assertEqual(len(pending["teams"]), 3)
+        self.assertEqual(pending["spots"], 2)
+        with self.assertRaises(ValueError):
+            seed_brackets(t)
+
+    def test_spareggio_view_resolves_and_assigns_gold(self):
+        """Decidere lo spareggio dalla UI promuove i vincitori in gold e sblocca il seed."""
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        groups = list(t.groups.order_by("name"))
+        teams = wildcard_spareggio(groups, {g.id: group_standings(g) for g in groups})[
+            "teams"
+        ]
+        url = reverse("tournaments:spareggio", kwargs={"slug": t.slug})
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+        winners = [teams[0].id, teams[1].id]
+        resp = self.client.post(url, {"winner": winners})
+        self.assertEqual(resp.status_code, 302)
+
+        rbg = {g.id: group_standings(g) for g in groups}
+        self.assertIsNone(wildcard_spareggio(groups, rbg))  # risolto
+        gold = gold_team_ids(groups, rbg)
+        self.assertIn(winners[0], gold)
+        self.assertIn(winners[1], gold)
+        self.assertNotIn(teams[2].id, gold)  # il terzo escluso va in silver
+        seed_brackets(t)  # non solleva più
+
+    def test_spareggio_view_rejects_wrong_count(self):
+        """Selezionare un numero sbagliato di vincitori non risolve nulla."""
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        groups = list(t.groups.order_by("name"))
+        teams = wildcard_spareggio(groups, {g.id: group_standings(g) for g in groups})[
+            "teams"
+        ]
+        url = reverse("tournaments:spareggio", kwargs={"slug": t.slug})
+        resp = self.client.post(url, {"winner": [teams[0].id]})  # serve 2, scelto 1
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "esattamente 2")
+        rbg = {g.id: group_standings(g) for g in groups}
+        self.assertIsNotNone(wildcard_spareggio(groups, rbg))  # ancora pendente
 
     def test_gold_badge_includes_best_two_thirds(self):
         """Nel formato a 12: gold = prime 2 di ogni girone + le 2 migliori terze."""

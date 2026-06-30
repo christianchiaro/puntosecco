@@ -8,7 +8,7 @@ Supporta wild card per formati come 3 gironi x 4 squadre (gold = 8, silver = 4).
 
 from .models import Match
 from .scheduling import slot_start
-from .standings import group_ranking, group_standings
+from .standings import group_ranking, group_standings, wildcard_spareggio
 
 _ROUND_NAMES = {
     1: "Finale",
@@ -56,13 +56,15 @@ def _ceil_power_of_two(n):
 
 
 def _best_wild_cards(groups, standings_map, n):
-    """Seleziona le n migliori terze classificate (criteri: vittorie, diff game, game fatti)."""
+    """Seleziona le n migliori terze (criteri: vittorie, diff game, game fatti, spareggio)."""
     thirds = []
     for g in groups:
         s = standings_map[g.id]
         if len(s) >= 3:
             thirds.append(s[2])
-    thirds.sort(key=lambda s: (s["wins"], s["diff"], s["gf"]), reverse=True)
+    thirds.sort(
+        key=lambda s: (s["wins"], s["diff"], s["gf"], s["team"].spareggio), reverse=True
+    )
     return [s["team"] for s in thirds[:n]]
 
 
@@ -157,6 +159,15 @@ def seed_brackets(tournament):
     standings_map = (
         {g.id: group_standings(g) for g in groups} if wild_cards_needed > 0 else {}
     )
+
+    if wild_cards_needed > 0:
+        pending = wildcard_spareggio(groups, standings_map)
+        if pending:
+            names = " / ".join(t.name for t in pending["teams"])
+            raise ValueError(
+                "C'è uno spareggio da risolvere prima di generare i tabelloni: "
+                f"{names} sono a pari merito per l'ultimo posto gold."
+            )
 
     tournament.matches.filter(phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]).delete()
 
