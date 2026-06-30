@@ -1034,6 +1034,33 @@ class SetupTests(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Tournament.objects.filter(slug="autunno-cup").exists())
 
+    def test_schedule_before_draw_shows_error_not_500(self):
+        # Bug: "Genera calendario" prima del sorteggio lanciava un 500 che sotto
+        # hx-boost spariva. Ora deve tornare 200 con un messaggio, senza creare partite.
+        t = create_tournament("X", datetime.date(2026, 7, 1))
+        for i in range(12):
+            Team.objects.create(tournament=t, name=f"C{i}", player1="a", player2="b")
+        self.client.force_login(self.staff)
+        url = reverse("tournaments:manage", kwargs={"slug": t.slug})
+        resp = self.client.post(url, {"action": "schedule"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "meno di 2 coppie")
+        t.refresh_from_db()
+        self.assertEqual(t.status, Tournament.Status.SETUP)
+        self.assertEqual(t.matches.filter(phase=Match.Phase.GROUP).count(), 0)
+
+    def test_calendar_button_disabled_until_draw(self):
+        t = create_tournament("X", datetime.date(2026, 7, 1))
+        for i in range(12):
+            Team.objects.create(tournament=t, name=f"C{i}", player1="a", player2="b")
+        self.client.force_login(self.staff)
+        url = reverse("tournaments:manage", kwargs={"slug": t.slug})
+        # Prima del sorteggio: il tasto calendario e' disabilitato.
+        self.assertFalse(self.client.get(url).context["drawn"])
+        self.client.post(url, {"action": "draw"})
+        # Dopo il sorteggio: abilitato.
+        self.assertTrue(self.client.get(url).context["drawn"])
+
 
 def make_3group_tournament(slug="tre-gironi"):
     """Torneo 3 gironi × 4 coppie (12 coppie totali) con 4 campi."""

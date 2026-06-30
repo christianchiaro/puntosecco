@@ -10,17 +10,21 @@
     <a href="{% url 'tournaments:register' slug=t.slug %}">link iscrizione pubblica</a>
   </p>
 
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+
   <div class="manage-actions">
     <form method="post">{% csrf_token %}<input type="hidden" name="action" value="draw">
       <button type="submit">🎲 Sorteggia gironi</button></form>
     <form method="post">{% csrf_token %}<input type="hidden" name="action" value="schedule">
-      <button type="submit" class="secondary">📅 Genera calendario</button></form>
+      <button type="submit" class="secondary" {% if not drawn %}disabled{% endif %}>📅 Genera calendario</button></form>
     <form method="post">{% csrf_token %}<input type="hidden" name="action" value="brackets">
       <button type="submit" class="secondary" {% if not group_done %}disabled{% endif %}>🏆 Genera tabelloni</button></form>
   </div>
-  {% if not group_done %}
-    <p class="muted"><small>I tabelloni si generano quando tutte le partite dei gironi sono concluse.</small></p>
-  {% endif %}
+  <ol class="manage-steps muted">
+    <li><small><strong>Sorteggia gironi</strong> per distribuire le coppie iscritte nei gironi.</small></li>
+    <li><small><strong>Genera calendario</strong>{% if not drawn %} (prima sorteggia i gironi){% endif %}.</small></li>
+    <li><small><strong>Genera tabelloni</strong>{% if not group_done %} (quando tutte le partite dei gironi sono concluse){% endif %}.</small></li>
+  </ol>
 
   <h2>Aggiungi coppia</h2>
   <form method="post" class="form-inline">{% csrf_token %}

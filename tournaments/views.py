@@ -370,30 +370,41 @@ def new_tournament(request):
 @staff_required
 def manage(request, slug):
     t = _tournament(slug)
+    error = None
     if request.method == "POST":
         action = request.POST.get("action")
-        if action == "add_team":
-            name = (request.POST.get("name") or "").strip()
-            p1 = (request.POST.get("player1") or "").strip()
-            p2 = (request.POST.get("player2") or "").strip()
-            if name and p1 and p2:
-                Team.objects.create(tournament=t, name=name, player1=p1, player2=p2)
-        elif action == "del_team":
-            Team.objects.filter(tournament=t, id=request.POST.get("team_id")).delete()
-        elif action == "draw":
-            draw_groups(t)
-        elif action == "schedule":
-            generate_group_stage(t)
-            t.status = Tournament.Status.GROUP
-            t.save(update_fields=["status"])
-        elif action == "brackets":
-            seed_brackets(t)
-            t.status = Tournament.Status.KNOCKOUT
-            t.save(update_fields=["status"])
-        return redirect("tournaments:manage", slug=t.slug)
+        # Le azioni di setup (draw/schedule/brackets) possono fallire con ValueError
+        # (es. girone con meno di 2 coppie): lo intercettiamo e lo mostriamo invece di
+        # restituire un 500 che, sotto hx-boost, sparirebbe come "il tasto non fa nulla".
+        try:
+            if action == "add_team":
+                name = (request.POST.get("name") or "").strip()
+                p1 = (request.POST.get("player1") or "").strip()
+                p2 = (request.POST.get("player2") or "").strip()
+                if name and p1 and p2:
+                    Team.objects.create(tournament=t, name=name, player1=p1, player2=p2)
+            elif action == "del_team":
+                Team.objects.filter(
+                    tournament=t, id=request.POST.get("team_id")
+                ).delete()
+            elif action == "draw":
+                draw_groups(t)
+            elif action == "schedule":
+                generate_group_stage(t)
+                t.status = Tournament.Status.GROUP
+                t.save(update_fields=["status"])
+            elif action == "brackets":
+                seed_brackets(t)
+                t.status = Tournament.Status.KNOCKOUT
+                t.save(update_fields=["status"])
+        except ValueError as exc:
+            error = str(exc)
+        else:
+            return redirect("tournaments:manage", slug=t.slug)
 
     groups = [(g, list(g.teams.all())) for g in t.groups.order_by("name")]
     unassigned = list(t.teams.filter(group__isnull=True))
+    drawn = t.teams.filter(group__isnull=False).exists()
     group_done = (
         t.matches.filter(phase=Match.Phase.GROUP).exists()
         and not t.matches.filter(phase=Match.Phase.GROUP)
@@ -409,7 +420,9 @@ def manage(request, slug):
             "unassigned": unassigned,
             "team_count": t.teams.count(),
             "has_schedule": t.matches.filter(phase=Match.Phase.GROUP).exists(),
+            "drawn": drawn,
             "group_done": group_done,
+            "error": error,
         },
     )
 
