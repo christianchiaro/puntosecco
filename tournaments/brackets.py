@@ -1,13 +1,14 @@
 """Tabelloni gold/silver: seeding dai gironi, scheduling a 2 slot, avanzamento vincenti.
 
-Generico: il tabellone di ogni fase ha 2×(n° gironi) coppie (gold = 1ª/2ª, silver = 3ª/4ª),
-che deve essere una potenza di 2 → 1, 2, 4 o 8 gironi. Seeding standard a incrocio: le teste
-di serie (le 1ª dei gironi) sono distribuite e si evitano fino in fondo al tabellone.
+Generico: il tabellone di ogni fase ha 2x(n gironi) coppie (gold = 1a/2a, silver = 3a/4a),
+che deve essere una potenza di 2 -> 1, 2, 4 o 8 gironi. Seeding standard a incrocio: le teste
+di serie (le 1a dei gironi) sono distribuite e si evitano fino in fondo al tabellone.
+Supporta wild card per formati come 3 gironi x 4 squadre (gold = 8, silver = 4).
 """
 
 from .models import Match
 from .scheduling import slot_start
-from .standings import group_ranking
+from .standings import group_ranking, group_standings
 
 _ROUND_NAMES = {
     1: "Finale",
@@ -46,9 +47,28 @@ def _is_power_of_two(n):
     return n >= 2 and (n & (n - 1)) == 0
 
 
+def _ceil_power_of_two(n):
+    """Smallest power of 2 >= n."""
+    p = 1
+    while p < n:
+        p <<= 1
+    return p
+
+
+def _best_wild_cards(groups, standings_map, n):
+    """Seleziona le n migliori terze classificate (criteri: vittorie, diff game, game fatti)."""
+    thirds = []
+    for g in groups:
+        s = standings_map[g.id]
+        if len(s) >= 3:
+            thirds.append(s[2])
+    thirds.sort(key=lambda s: (s["wins"], s["diff"], s["gf"]), reverse=True)
+    return [s["team"] for s in thirds[:n]]
+
+
 def _build_phase_bracket(tournament, phase, seeds):
     """Costruisce un tabellone a eliminazione per `seeds` (lista di coppie in ordine di
-    testa di serie, lunghezza potenza di 2). Crea anche la finale 3°/4° posto."""
+    testa di serie, lunghezza potenza di 2). Crea anche la finale 3/4 posto."""
     n = len(seeds)
     order = _seed_order(n)
 
@@ -84,13 +104,13 @@ def _build_phase_bracket(tournament, phase, seeds):
             )
         rounds.append(cur)
 
-    # Finale 3°/4° posto: i perdenti delle semifinali (il turno con 2 partite).
+    # Finale 3/4 posto: i perdenti delle semifinali (il turno con 2 partite).
     semis = next((r for r in rounds if len(r) == 2), None)
     if semis:
         Match.objects.create(
             tournament=tournament,
             phase=phase,
-            round_label="Finale 3°/4°",
+            round_label="Finale 3\xb0/4\xb0",
             bracket_pos=2,
             slot_span=2,
             source_a=semis[0],
@@ -103,8 +123,9 @@ def _build_phase_bracket(tournament, phase, seeds):
 def seed_brackets(tournament):
     """Crea le partite di gold e silver dai risultati dei gironi e le programma.
 
-    Richiede che TUTTE le partite dei gironi siano concluse e un numero di gironi
-    che dia un tabellone potenza di 2 (1, 2, 4 o 8 gironi).
+    Supporta formati con wild card: se 2*num_groups non e' potenza di 2, completa il gold
+    con le migliori terze classificate e manda le rimanenti in silver.
+    Richiede che TUTTE le partite dei gironi siano concluse.
     """
     group_matches = tournament.matches.filter(phase=Match.Phase.GROUP)
     if not group_matches.exists():
@@ -113,35 +134,69 @@ def seed_brackets(tournament):
         raise ValueError("Tutte le partite dei gironi devono essere concluse.")
 
     groups = list(tournament.groups.order_by("name"))
-    if not _is_power_of_two(2 * len(groups)):
+    num_groups = len(groups)
+    total_teams = tournament.num_teams
+
+    gold_size = _ceil_power_of_two(num_groups * 2)
+    silver_size = total_teams - gold_size
+
+    if gold_size > total_teams:
         raise ValueError(
-            f"Formato non supportato: con {len(groups)} gironi il tabellone non è una "
-            "potenza di 2. Servono 1, 2, 4 o 8 gironi."
+            f"Formato non supportato: con {num_groups} gironi servirebbero {gold_size} "
+            f"squadre in gold ma il torneo ne ha solo {total_teams}."
         )
+    if silver_size > 0 and not _is_power_of_two(silver_size):
+        raise ValueError(
+            f"Formato non supportato: con {num_groups} gironi il silver avrebbe "
+            f"{silver_size} squadre (non una potenza di 2)."
+        )
+
+    wild_cards_needed = gold_size - num_groups * 2
+
     ranking = {g.id: group_ranking(g) for g in groups}
+    standings_map = (
+        {g.id: group_standings(g) for g in groups} if wild_cards_needed > 0 else {}
+    )
 
     tournament.matches.filter(phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]).delete()
 
-    # Gold = 1ª di ogni girone (teste di serie) poi 2ª; Silver = 3ª poi 4ª.
-    gold = [ranking[g.id][0] for g in groups] + [ranking[g.id][1] for g in groups]
+    top1 = [ranking[g.id][0] for g in groups]
+    top2 = [ranking[g.id][1] for g in groups]
+
+    if wild_cards_needed > 0:
+        wild_cards = _best_wild_cards(groups, standings_map, wild_cards_needed)
+        gold = top1 + top2 + wild_cards
+    else:
+        gold = top1 + top2
+
     _build_phase_bracket(tournament, Match.Phase.GOLD, gold)
-    if all(len(ranking[g.id]) >= 4 for g in groups):
-        silver = [ranking[g.id][2] for g in groups] + [ranking[g.id][3] for g in groups]
-        _build_phase_bracket(tournament, Match.Phase.SILVER, silver)
+
+    if silver_size > 0:
+        gold_ids = {t.id for t in gold}
+        silver_thirds = []
+        silver_fourths = []
+        for g in groups:
+            rank = ranking[g.id]
+            if len(rank) >= 3 and rank[2].id not in gold_ids:
+                silver_thirds.append(rank[2])
+            if len(rank) >= 4:
+                silver_fourths.append(rank[3])
+        silver = silver_thirds + silver_fourths
+        _build_phase_bracket(tournament, Match.Phase.SILVER, silver[:silver_size])
 
     schedule_knockout(tournament)
 
 
 def _knockout_round_groups(tournament):
     """Turni knockout in ordine di gioco (gold e silver in parallelo). Finale e
-    finale 3°/4° posto giocano insieme nello stesso turno."""
+    finale 3/4 posto giocano insieme nello stesso turno."""
     present = set(
         tournament.matches.filter(
             phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]
         ).values_list("round_label", flat=True)
     )
     groups = [[lbl] for lbl in _ROUND_SEQUENCE if lbl in present]
-    finals = [lbl for lbl in ("Finale", "Finale 3°/4°") if lbl in present]
+    finals = [lbl for lbl in ("Finale", "Finale 3\xb0/4\xb0") if lbl in present]
     if finals:
         groups.append(finals)
     return groups
@@ -177,8 +232,8 @@ def schedule_knockout(tournament):
 def advance_bracket(match):
     """Propaga vincente/perdente di `match` nelle partite che ne dipendono.
 
-    Se un team cambia in una partita a valle che era GIÀ stata giocata, quel risultato
-    non è più valido: viene azzerato a cascata (set, vincitore, stato → programmata).
+    Se un team cambia in una partita a valle che era GIA' stata giocata, quel risultato
+    non e' piu' valido: viene azzerato a cascata (set, vincitore, stato -> programmata).
     Imposta `match._downstream_reset` = quante partite a valle sono state azzerate.
     """
     match._downstream_reset = 0
@@ -199,8 +254,8 @@ def advance_bracket(match):
 def _set_slot(dep, field, team):
     """Mette `team` nello slot `field` (team_a/team_b) di `dep`.
 
-    Se il valore cambia e `dep` aveva già un risultato, lo azzera e invalida a cascata
-    tutto ciò che dipendeva da `dep`. Ritorna quante partite ha azzerato.
+    Se il valore cambia e `dep` aveva gia' un risultato, lo azzera e invalida a cascata
+    tutto cio' che dipendeva da `dep`. Ritorna quante partite ha azzerato.
     """
     team_id = team.id if team else None
     if getattr(dep, f"{field}_id") == team_id:
@@ -220,7 +275,7 @@ def _set_slot(dep, field, team):
         reset = 1
     dep.save()
 
-    if reset:  # i risultati a valle di dep non sono più validi
+    if reset:  # i risultati a valle di dep non sono piu' validi
         for d in dep.feeds_a.all():
             reset += _set_slot(d, "team_a", None)
         for d in dep.feeds_b.all():

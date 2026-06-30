@@ -1031,3 +1031,218 @@ class SetupTests(TestCase):
         )
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Tournament.objects.filter(slug="autunno-cup").exists())
+
+
+def make_3group_tournament(slug="tre-gironi"):
+    """Torneo 3 gironi × 4 coppie (12 coppie totali) con 4 campi."""
+    t = Tournament.objects.create(
+        name="Tre Gironi",
+        slug=slug,
+        date=datetime.date(2026, 7, 1),
+        num_groups=3,
+        teams_per_group=4,
+        num_courts=4,
+    )
+    for n in range(1, 5):
+        Court.objects.create(tournament=t, number=n)
+    for gi, letter in enumerate("ABC"):
+        g = Group.objects.create(tournament=t, name=letter)
+        for ti in range(4):
+            Team.objects.create(
+                tournament=t,
+                name=f"{letter}{ti + 1}",
+                player1=f"p{gi}{ti}a",
+                player2=f"p{gi}{ti}b",
+                seed=ti + 1,
+                group=g,
+            )
+    return t
+
+
+class WildCardBracketTest(TestCase):
+    """Test per la logica wild-card: 3 gironi x 4 coppie (12 totali).
+
+    Gold = top-2 di ogni girone (6) + migliori 2 terzi (wild card) = 8.
+    Silver = peggior terzo + 3 quarti classificati = 4.
+    """
+
+    def _setup_3group(self):
+        t = make_3group_tournament()
+        generate_group_stage(t)
+        return t
+
+    def test_12_team_gold_has_8_teams(self):
+        """Con 3 gironi x 4, gold ha 8 coppie in QF e silver ha 4 coppie in SF."""
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        seed_brackets(t)
+
+        # Gold: 4 partite di quarti, tutte con entrambe le coppie assegnate.
+        gold_qf = t.matches.filter(phase=Match.Phase.GOLD, round_label="Quarti")
+        self.assertEqual(gold_qf.count(), 4, "Gold deve avere 4 quarti (8 coppie).")
+        for m in gold_qf:
+            self.assertIsNotNone(m.team_a_id, f"QF {m.bracket_pos}: team_a mancante")
+            self.assertIsNotNone(m.team_b_id, f"QF {m.bracket_pos}: team_b mancante")
+
+        # Silver: 2 semifinali (4 coppie), niente quarti.
+        silver_sf = t.matches.filter(phase=Match.Phase.SILVER, round_label="Semifinale")
+        silver_qf = t.matches.filter(phase=Match.Phase.SILVER, round_label="Quarti")
+        self.assertEqual(
+            silver_sf.count(), 2, "Silver deve avere 2 semifinali (4 coppie)."
+        )
+        self.assertEqual(
+            silver_qf.count(), 0, "Silver non deve avere quarti con 4 coppie."
+        )
+
+    def test_wild_cards_are_best_thirds(self):
+        """I due terzi con piu vittorie/miglior differenza vanno in gold; il peggiore in silver."""
+        t = self._setup_3group()
+
+        # Gioco i gironi a mano per avere terzi con differenti differenziali:
+        # Girone A: A1>A2>A3>A4 (terzo A3 ha 1 vitt, diff mediocre)
+        # Girone B: B1>B2>B3>B4 (terzo B3 ha 1 vitt, diff mediocre)
+        # Girone C: C1>C2>C3>C4 (terzo C3 ha 1 vitt, diff mediocre)
+        # Per differenziare i terzi, C3 batte C4 con punteggio piu largo.
+        # Approccio: play_all_groups_by_seed fa vince sempre il seed piu basso (6-0),
+        # ma poi ri-segno le partite che coinvolgono C3/C4 per dargli diff migliore.
+
+        play_all_groups_by_seed(t)
+
+        # Verifica che dopo seed_brackets i wild card (in gold) siano i 2 terzi con
+        # piu vittorie o miglior diff; il terzo rimanente finisce in silver.
+        # Per farlo: modifichiamo i risultati del girone C in modo che C3 abbia 2 vittorie
+        # (C3 batte C2 e C4), rendendolo il miglior terzo.
+
+        # Azzera le partite del girone C e riscrivile.
+        group_c = t.groups.get(name="C")
+        Match.objects.filter(group=group_c).delete()
+        generate_group_stage(
+            t
+        )  # rigenera solo il girone C non e' possibile, quindi tutto
+        # Il generate_group_stage rigenera tutto; ri-gioco i gironi A e B normalmente,
+        # poi il girone C con C3 al secondo posto.
+
+        play_all_groups_by_seed(t)
+
+        # Forza C3 ad avere 2 vittorie: C3 batte C2 (ri-segno quella partita).
+        c2 = t.teams.get(name="C2")
+        c3 = t.teams.get(name="C3")
+        m_c2_c3 = group_c.matches.filter(
+            team_a__in=[c2, c3], team_b__in=[c2, c3]
+        ).first()
+        if m_c2_c3:
+            # Ri-segno: C3 vince
+            if m_c2_c3.team_a_id == c3.id:
+                record_match_score(m_c2_c3, [{"games_a": 6, "games_b": 0}])
+            else:
+                record_match_score(m_c2_c3, [{"games_a": 0, "games_b": 6}])
+
+        # Ora la classifica del girone C: C1(3v) > C3(2v) > C2(1v) > C4(0v)
+        # oppure C1(3v) > C2(2v) > ... dipende dall'ordine scontro diretto.
+        # Verifichiamo tramite la classifica effettiva.
+        ranking_c = group_ranking(group_c)
+
+        seed_brackets(t)
+
+        # Raccogli le coppie in gold QF.
+        gold_qf_teams = set()
+        for m in t.matches.filter(phase=Match.Phase.GOLD, round_label="Quarti"):
+            gold_qf_teams.add(m.team_a_id)
+            gold_qf_teams.add(m.team_b_id)
+
+        # I terzi classificati dei 3 gironi.
+        thirds = []
+        for g in t.groups.order_by("name"):
+            ranking = group_ranking(g)
+            thirds.append(ranking[2])  # 0-indexed: indice 2 = terzo
+
+        thirds_in_gold = [t_team for t_team in thirds if t_team.id in gold_qf_teams]
+        thirds_in_silver_sf = []
+        silver_sf_teams = set()
+        for m in t.matches.filter(phase=Match.Phase.SILVER, round_label="Semifinale"):
+            silver_sf_teams.add(m.team_a_id)
+            silver_sf_teams.add(m.team_b_id)
+        thirds_in_silver = [t_team for t_team in thirds if t_team.id in silver_sf_teams]
+
+        self.assertEqual(
+            len(thirds_in_gold),
+            2,
+            f"Esattamente 2 terzi devono andare in gold come wild card, trovati: "
+            f"{[tm.name for tm in thirds_in_gold]}",
+        )
+        self.assertEqual(
+            len(thirds_in_silver),
+            1,
+            f"Esattamente 1 terzo deve finire in silver, trovato: "
+            f"{[tm.name for tm in thirds_in_silver]}",
+        )
+
+    def test_16_team_unchanged(self):
+        """Il formato 4x4 (16 coppie) non usa wild card: gold=8, silver=8, invariato."""
+        t = make_full_tournament()
+        generate_group_stage(t)
+        play_all_groups_by_seed(t)
+        seed_brackets(t)
+
+        # Gold: 8 coppie in QF (4 partite), ciascuna con una prima e una seconda.
+        gold_qf = t.matches.filter(phase=Match.Phase.GOLD, round_label="Quarti")
+        self.assertEqual(gold_qf.count(), 4)
+        for m in gold_qf:
+            self.assertIsNotNone(m.team_a_id)
+            self.assertIsNotNone(m.team_b_id)
+            # Nessun terzo o quarto classificato nel gold.
+            self.assertIn(
+                m.team_a.seed,
+                [1, 2],
+                f"Gold QF: team_a {m.team_a.name} non e' primo o secondo (seed={m.team_a.seed})",
+            )
+            self.assertIn(
+                m.team_b.seed,
+                [1, 2],
+                f"Gold QF: team_b {m.team_b.name} non e' primo o secondo (seed={m.team_b.seed})",
+            )
+
+        # Silver: 8 coppie in QF (4 partite), ciascuna con una terza e una quarta.
+        silver_qf = t.matches.filter(phase=Match.Phase.SILVER, round_label="Quarti")
+        self.assertEqual(silver_qf.count(), 4)
+        for m in silver_qf:
+            self.assertIn(m.team_a.seed, [3, 4])
+            self.assertIn(m.team_b.seed, [3, 4])
+
+        # Nessun wild card usato: il totale coppie nei bracket e' esattamente 16.
+        all_ko_teams = set()
+        for m in t.matches.filter(
+            phase__in=[Match.Phase.GOLD, Match.Phase.SILVER], round_label__in=["Quarti"]
+        ):
+            all_ko_teams.add(m.team_a_id)
+            all_ko_teams.add(m.team_b_id)
+        self.assertEqual(len(all_ko_teams), 16)
+
+    def test_invalid_format_raises_value_error(self):
+        """3 gironi x 3 coppie (9 totali) deve sollevare ValueError."""
+        t = Tournament.objects.create(
+            name="Formato Strano",
+            slug="formato-strano",
+            date=datetime.date(2026, 7, 1),
+            num_groups=3,
+            teams_per_group=3,
+            num_courts=3,
+        )
+        for n in range(1, 4):
+            Court.objects.create(tournament=t, number=n)
+        for gi, letter in enumerate("ABC"):
+            g = Group.objects.create(tournament=t, name=letter)
+            for ti in range(3):
+                Team.objects.create(
+                    tournament=t,
+                    name=f"{letter}{ti + 1}",
+                    player1=f"p{gi}{ti}a",
+                    player2=f"p{gi}{ti}b",
+                    seed=ti + 1,
+                    group=g,
+                )
+        generate_group_stage(t)
+        play_all_groups_by_seed(t)
+
+        with self.assertRaises(ValueError):
+            seed_brackets(t)

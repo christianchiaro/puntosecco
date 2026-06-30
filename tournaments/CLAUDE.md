@@ -35,9 +35,10 @@ stesso schema con 3ª/4ª per il silver.
 - **Walkover**: `scoring.record_walkover(match, winner)` → `Match.walkover=True`, vincitore senza set (`score_display="W.O."`).
 - **Integrità knockout**: ri-segnare una partita già "consumata" azzera a cascata i risultati a valle
   (`brackets.advance_bracket` → `_set_slot`); il numero di partite azzerate è in `match._downstream_reset`.
-- **Tabelloni generici** (`brackets.py`): `seed_brackets` costruisce un tabellone per qualsiasi
-  numero di gironi con 2×gironi potenza di 2 (1/2/4/8). Seeding a incrocio (`_seed_order`), nomi
-  turni automatici (Sedicesimi…Finale). I gironi erano già generici.
+- **Tabelloni generici** (`brackets.py`): `seed_brackets` supporta wild card. Se 2*num_groups
+  non e' potenza di 2, completa il gold con le migliori terze classificate (vittorie/diff/gf).
+  Esempio: 3 gironi x 4 = gold 8 (top-2x3 + 2 migliori terze), silver 4 (peggior terza + 3 quarte).
+  Vincolo: `silver_size = total_teams - gold_size` deve essere 0 o potenza di 2.
 - **Accountability** (`ScoreLog`): ogni modifica al punteggio è loggata (azione + dettaglio + IP) in
   `views._log_score`; registro pubblico `/registro/` (IP solo in admin). Iscrizione con honeypot antispam.
 - **Modalità TV** (`/tv/`): kiosk standalone (no nav), polling 30s + **scene rotanti** ogni 15s
