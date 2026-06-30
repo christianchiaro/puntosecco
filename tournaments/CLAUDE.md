@@ -3,9 +3,10 @@
 Caricate solo quando si lavora qui. Sono le regole di dominio di Punto Secco.
 
 ## Formato (default, parametrico nel modello `Tournament`)
-- 16 coppie, 4 gironi (A-D) da 4, 4 campi, slot da 25 min, 14:00-20:00 (14 slot).
-- **Gironi**: girone all'italiana → 6 partite/girone, 24 totali. Partita = **1 set** con tie-break. `slot_span=1`.
-- **Knockout**: le prime 2 di ogni girone → **gold**, le ultime 2 → **silver**. Quarti → semifinali → finale, + **finale 3°/4° posto** (gold e silver).
+- **12 coppie, 3 gironi (A-C) da 4**, 4 campi, slot da 25 min.
+- **Gironi**: girone all'italiana → 6 partite/girone, 18 totali. Partita = **1 set** con tie-break. `slot_span=1`.
+- **Knockout gold (8 squadre)**: prime 2 di ogni girone + 2 migliori terze (wild card) → quarti → semifinali → finale + 3°/4°.
+- **Knockout silver (4 squadre)**: peggior terza + 3 quarte → semifinali → finale + 3°/4° (niente quarti).
 - Partita knockout = **2 set + super tie-break a 10 se 1-1**. `slot_span=2` (occupa 2 slot).
 
 ## Timing (entra esatto nei 14 slot)

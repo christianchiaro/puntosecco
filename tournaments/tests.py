@@ -23,8 +23,8 @@ def make_tournament(**kwargs):
 
 
 def make_full_tournament():
-    """Torneo completo: 4 campi, 4 gironi (A-D), 16 coppie (4 per girone)."""
-    t = make_tournament()
+    """Torneo completo: 4 campi, 4 gironi (A-D), 16 coppie (4 per girone). Formato legacy esplicito."""
+    t = make_tournament(num_groups=4, teams_per_group=4)
     for n in range(1, t.num_courts + 1):
         Court.objects.create(tournament=t, number=n)
     for gi in range(t.num_groups):
@@ -963,7 +963,7 @@ class SetupTests(TestCase):
     def test_create_tournament_makes_courts_and_groups(self):
         t = create_tournament("Coppa Estiva", datetime.date(2026, 7, 1))
         self.assertEqual(t.courts.count(), 4)
-        self.assertEqual(t.groups.count(), 4)
+        self.assertEqual(t.groups.count(), 3)  # default 3 gironi (formato 12 coppie)
         self.assertEqual(t.slug, "coppa-estiva")
 
     def test_unique_slug(self):
@@ -973,7 +973,7 @@ class SetupTests(TestCase):
 
     def test_draw_groups_assigns_all_teams(self):
         t = create_tournament("X", datetime.date(2026, 7, 1))
-        for i in range(16):
+        for i in range(12):  # 3 gironi x 4 = 12 coppie
             Team.objects.create(tournament=t, name=f"C{i}", player1="a", player2="b")
         draw_groups(t)
         self.assertFalse(t.teams.filter(group__isnull=True).exists())
@@ -1014,7 +1014,7 @@ class SetupTests(TestCase):
 
     def test_manage_draw_and_schedule_flow(self):
         t = create_tournament("X", datetime.date(2026, 7, 1))
-        for i in range(16):
+        for i in range(12):  # 3 gironi x 4 = 12 coppie
             Team.objects.create(tournament=t, name=f"C{i}", player1="a", player2="b")
         self.client.force_login(self.staff)
         url = reverse("tournaments:manage", kwargs={"slug": t.slug})
@@ -1022,7 +1022,9 @@ class SetupTests(TestCase):
         self.client.post(url, {"action": "schedule"})
         t.refresh_from_db()
         self.assertEqual(t.status, Tournament.Status.GROUP)
-        self.assertEqual(t.matches.filter(phase=Match.Phase.GROUP).count(), 24)
+        self.assertEqual(
+            t.matches.filter(phase=Match.Phase.GROUP).count(), 18
+        )  # 3 gironi x 6
 
     def test_new_tournament_post_creates_and_redirects(self):
         self.client.force_login(self.staff)

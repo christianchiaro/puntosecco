@@ -18,7 +18,7 @@ class Tournament(models.Model):
     start_time = models.TimeField(default=time(14, 0))
     num_courts = models.PositiveSmallIntegerField(default=4)
     slot_minutes = models.PositiveSmallIntegerField(default=25)
-    num_groups = models.PositiveSmallIntegerField(default=4)
+    num_groups = models.PositiveSmallIntegerField(default=3)
     teams_per_group = models.PositiveSmallIntegerField(default=4)
     status = models.CharField(
         max_length=12, choices=Status.choices, default=Status.SETUP

@@ -2,10 +2,12 @@
 <section class="bracket">
   <h2>{{ title }}</h2>
   <div class="bracket__cols">
+    {% if data.quarti %}
     <div class="bracket__col">
       <h3>Quarti</h3>
       {% for m in data.quarti %}{% include "tournaments/partials/_match_pill.html" with match=m %}{% endfor %}
     </div>
+    {% endif %}
     <div class="bracket__col">
       <h3>Semifinali</h3>
       {% for m in data.semifinali %}{% include "tournaments/partials/_match_pill.html" with match=m %}{% endfor %}

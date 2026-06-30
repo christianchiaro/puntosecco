@@ -15,7 +15,7 @@ def unique_slug(name):
     return slug
 
 
-def create_tournament(name, date, num_courts=4, num_groups=4, teams_per_group=4):
+def create_tournament(name, date, num_courts=4, num_groups=3, teams_per_group=4):
     """Crea il torneo con i suoi campi e gironi (vuoti)."""
     t = Tournament.objects.create(
         name=name,
