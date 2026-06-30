@@ -11,7 +11,7 @@ from .brackets import schedule_knockout, seed_brackets
 from .models import Court, Group, Match, Team, Tournament
 from .scheduling import generate_group_stage, round_robin_rounds, slot_start
 from .scoring import record_match_score
-from .standings import group_ranking, group_standings
+from .standings import gold_team_ids, group_ranking, group_standings
 
 
 def make_tournament(**kwargs):
@@ -1297,6 +1297,41 @@ class WildCardBracketTest(TestCase):
             all_ko_teams.add(m.team_a_id)
             all_ko_teams.add(m.team_b_id)
         self.assertEqual(len(all_ko_teams), 16)
+
+    def test_gold_badge_includes_best_two_thirds(self):
+        """Nel formato a 12: gold = prime 2 di ogni girone + le 2 migliori terze."""
+        t = make_3group_tournament()
+        generate_group_stage(t)
+        play_all_groups_by_seed(t)
+        groups = list(t.groups.order_by("name"))
+        rows_by_group = {g.id: group_standings(g) for g in groups}
+        gold = gold_team_ids(groups, rows_by_group)
+
+        self.assertEqual(len(gold), 8)  # 6 (prime 2 x3) + 2 wild card
+        for g in groups:
+            rows = rows_by_group[g.id]
+            self.assertIn(rows[0]["team"].id, gold)  # 1ª
+            self.assertIn(rows[1]["team"].id, gold)  # 2ª
+            self.assertNotIn(rows[3]["team"].id, gold)  # 4ª mai in gold
+        # Esattamente 2 delle 3 terze finiscono in gold (wild card).
+        thirds = [rows_by_group[g.id][2]["team"].id for g in groups]
+        self.assertEqual(sum(1 for tid in thirds if tid in gold), 2)
+
+    def test_four_groups_gold_is_top_two_only(self):
+        """Con 4 gironi (16) niente wild card: gold = solo prime e seconde."""
+        t = make_full_tournament()
+        generate_group_stage(t)
+        play_all_groups_by_seed(t)
+        groups = list(t.groups.order_by("name"))
+        rows_by_group = {g.id: group_standings(g) for g in groups}
+        gold = gold_team_ids(groups, rows_by_group)
+        self.assertEqual(len(gold), 8)
+        for g in groups:
+            rows = rows_by_group[g.id]
+            self.assertIn(rows[0]["team"].id, gold)
+            self.assertIn(rows[1]["team"].id, gold)
+            self.assertNotIn(rows[2]["team"].id, gold)  # terze in silver
+            self.assertNotIn(rows[3]["team"].id, gold)
 
     def test_invalid_format_raises_value_error(self):
         """3 gironi x 3 coppie (9 totali) deve sollevare ValueError."""

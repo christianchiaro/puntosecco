@@ -117,3 +117,40 @@ def group_standings(group):
 def group_ranking(group):
     """Solo le coppie, dalla 1ª all'ultima."""
     return [s["team"] for s in group_standings(group)]
+
+
+def _ceil_power_of_two(n):
+    p = 1
+    while p < n:
+        p <<= 1
+    return p
+
+
+def gold_team_ids(groups, rows_by_group):
+    """Set di team_id destinati al tabellone GOLD, secondo la stessa logica di
+    `seed_brackets`: prime 2 di ogni girone + le migliori terze (wild card) fino a
+    riempire il gold (potenza di 2). Tutto il resto va in silver.
+
+    `groups`: lista di Group (ordinati per nome). `rows_by_group`: {group_id: rows}
+    dove rows è l'output di `group_standings`. Provvisorio in fase a gironi.
+    """
+    num_groups = len(groups)
+    if num_groups == 0:
+        return set()
+    gold_size = _ceil_power_of_two(num_groups * 2)
+    wild_needed = max(0, gold_size - num_groups * 2)
+
+    ids = set()
+    thirds = []
+    for g in groups:
+        rows = rows_by_group[g.id]
+        for r in rows[:2]:
+            ids.add(r["team"].id)
+        if len(rows) >= 3:
+            thirds.append(rows[2])
+
+    if wild_needed:
+        thirds.sort(key=lambda s: (s["wins"], s["diff"], s["gf"]), reverse=True)
+        for s in thirds[:wild_needed]:
+            ids.add(s["team"].id)
+    return ids

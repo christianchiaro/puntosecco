@@ -16,7 +16,7 @@ from .models import Match, ScoreLog, Team, Tournament
 from .scheduling import generate_group_stage, slot_start
 from .scoring import record_match_score, record_walkover, sets_from_post
 from .setup import create_tournament, draw_groups
-from .standings import group_standings
+from .standings import group_standings, gold_team_ids
 from .stats import tournament_stats
 
 staff_required = user_passes_test(lambda u: u.is_staff)
@@ -116,30 +116,52 @@ def live_context(tournament):
 
 
 # --- Viste --------------------------------------------------------------------
+def _standings_groups(tournament):
+    """Classifiche per girone, con ogni riga annotata `gold`=True se la coppia è
+    destinata al tabellone gold (prime 2 + migliori terze wild card), così il badge
+    riflette la qualificazione reale e non il solo piazzamento nel girone."""
+    groups = list(tournament.groups.order_by("name"))
+    rows_by_group = {g.id: group_standings(g) for g in groups}
+    gold_ids = gold_team_ids(groups, rows_by_group)
+    data = []
+    for g in groups:
+        rows = rows_by_group[g.id]
+        for r in rows:
+            r["gold"] = r["team"].id in gold_ids
+        data.append((g, rows))
+    return data
+
+
 def dashboard(request, slug):
     t = _tournament(slug)
-    groups = [(g, group_standings(g)) for g in t.groups.all()]
     return render(
         request,
         "tournaments/dashboard.html",
-        {"t": t, "groups": groups, "champion": champion(t), **live_context(t)},
+        {
+            "t": t,
+            "groups": _standings_groups(t),
+            "champion": champion(t),
+            **live_context(t),
+        },
     )
 
 
 def standings(request, slug):
     t = _tournament(slug)
-    groups = [(g, group_standings(g)) for g in t.groups.all()]
-    return render(request, "tournaments/standings.html", {"t": t, "groups": groups})
+    return render(
+        request,
+        "tournaments/standings.html",
+        {"t": t, "groups": _standings_groups(t)},
+    )
 
 
 def standings_board(request, slug):
     """Partial polled dalla pagina classifiche (auto-refresh ogni 60s)."""
     t = _tournament(slug)
-    groups = [(g, group_standings(g)) for g in t.groups.all()]
     return render(
         request,
         "tournaments/partials/_standings_board.html",
-        {"t": t, "groups": groups},
+        {"t": t, "groups": _standings_groups(t)},
     )
 
 
