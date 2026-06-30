@@ -211,7 +211,9 @@ body.tv main { padding-bottom: 4rem; }
 .tv-standings li { display: flex; align-items: center; gap: .6rem; padding: .25rem 0; }
 .tv-standings li.is-gold { color: #e0c069; font-weight: 700; }
 .tv-rank { width: 1.5rem; text-align: center; color: #8fb3a8; }
-.tv-spareggio { color: var(--live); font-size: .7em; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+.tv-standings li.is-spareggio { color: #ffd9d7; }
+.tv-spareggio-alert { display: flex; align-items: center; justify-content: center; gap: .8rem; flex-wrap: wrap; margin: 1.2rem 1.5rem 0; padding: .9rem 1.2rem; border: 2px solid var(--live); border-radius: .8rem; background: rgba(255,111,106,.12); font-size: 1.35rem; }
+.tv-spareggio-alert__tag { background: var(--live); color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; padding: .25rem .7rem; border-radius: .4rem; }
 .tv-standings b { margin-left: auto; }
 .tv-scene--podio { text-align: center; padding-top: 2rem; }
 .tv-trophy { font-size: 5rem; line-height: 1; }
@@ -228,6 +230,7 @@ body.tv main { padding-bottom: 4rem; }
 
 /* Classifiche TV: nome + V + differenza game */
 .tv-std-name { flex: 1; }
+.tv-games { color: #8fb3a8; font-variant-numeric: tabular-nums; min-width: 3.2rem; text-align: right; }
 .tv-diff { color: #8fb3a8; font-variant-numeric: tabular-nums; min-width: 2.4rem; text-align: right; }
 
 /* Tabellone TV (stile bracket a colonne con connettori) */
