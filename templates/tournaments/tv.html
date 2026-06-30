@@ -10,7 +10,10 @@
 </head>
 <body class="tv">
   <header class="tv-header">
-    <span>🎾 {{ t.name }} - Live</span>
+    <span class="tv-header__brand">
+      <img class="tv-header__mark" src="{% static 'img/logo-mark.png' %}" alt="" aria-hidden="true">
+      {{ t.name }} - Live
+    </span>
     <a href="{% url 'tournaments:live' slug=t.slug %}">Esci</a>
   </header>
   {# Auto-refresh dati ogni 30s; le scene ruotano ogni 15s via JS. #}

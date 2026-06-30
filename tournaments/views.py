@@ -649,13 +649,13 @@ def match_og_image(request, slug, match_id):
     )
 
     W, H = 640, 340
-    BG = (14, 124, 102)  # #0e7c66
+    BG = (49, 85, 47)  # #31552f - verde logo
     WHITE = (255, 255, 255)
     GREY_LIGHT = (180, 200, 190)
     GREY_MID = (130, 160, 150)
-    GREEN_BRIGHT = (43, 185, 154)  # #2bb99a
+    GREEN_BRIGHT = (155, 205, 145)  # #9bcd91
     RED_BADGE = (210, 64, 60)  # #d2403c
-    DARK_BADGE = (8, 70, 58)
+    DARK_BADGE = (34, 64, 31)  # #22401f
 
     def load_font(size, bold=False):
         paths = [

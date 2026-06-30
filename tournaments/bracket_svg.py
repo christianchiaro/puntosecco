@@ -14,10 +14,10 @@ V_GAP = 46
 PAD = 18
 
 INK = "#eafff7"
-WIN = "#2bb99a"
-MUTE = "#8fb3a8"
-LINE = "#2f5145"
-BOXBG = "#12241e"
+WIN = "#9bcd91"
+MUTE = "#9fb39a"
+LINE = "#3c5232"
+BOXBG = "#172414"
 FONT = "system-ui,-apple-system,sans-serif"
 
 
