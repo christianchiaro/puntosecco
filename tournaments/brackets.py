@@ -121,46 +121,56 @@ def _build_phase_bracket(tournament, phase, seeds):
         )
 
     # Consolazione 5\xb0-8\xb0: se il primo turno sono i quarti (4 partite), i 4 perdenti
-    # si giocano i piazzamenti -> 2 semifinali di consolazione, poi finale 5\xb0/6\xb0 e 7\xb0/8\xb0.
-    # Cosi' tutte le coppie del tabellone hanno un piazzamento univoco.
+    # si giocano i piazzamenti. Cosi' tutte le coppie del tabellone hanno un posto univoco.
+    build_consolation(tournament, phase, rounds[0])
+
+
+def build_consolation(tournament, phase, qf):
+    """Crea il tabellone di consolazione 5\xb0-8\xb0 dai 4 quarti `qf`: 2 semifinali coi
+    perdenti dei quarti, poi finale 5\xb0/6\xb0 e finale 7\xb0/8\xb0. No-op se non ci sono 4 quarti
+    o se la consolazione esiste gia' (idempotente)."""
+    if len(qf) != 4:
+        return
+    if tournament.matches.filter(
+        phase=phase, round_label="Semifinale 5\xb0-8\xb0"
+    ).exists():
+        return
     loser = Match.SourceRole.LOSER
-    qf = rounds[0]
-    if len(qf) == 4:
-        cons_sf = []
-        for pos, (a, b) in enumerate(((qf[0], qf[1]), (qf[2], qf[3])), start=1):
-            cons_sf.append(
-                Match.objects.create(
-                    tournament=tournament,
-                    phase=phase,
-                    round_label="Semifinale 5\xb0-8\xb0",
-                    bracket_pos=pos,
-                    slot_span=2,
-                    source_a=a,
-                    source_a_role=loser,
-                    source_b=b,
-                    source_b_role=loser,
-                )
+    cons_sf = []
+    for pos, (a, b) in enumerate(((qf[0], qf[1]), (qf[2], qf[3])), start=1):
+        cons_sf.append(
+            Match.objects.create(
+                tournament=tournament,
+                phase=phase,
+                round_label="Semifinale 5\xb0-8\xb0",
+                bracket_pos=pos,
+                slot_span=2,
+                source_a=a,
+                source_a_role=loser,
+                source_b=b,
+                source_b_role=loser,
             )
-        Match.objects.create(
-            tournament=tournament,
-            phase=phase,
-            round_label="Finale 5\xb0/6\xb0",
-            bracket_pos=1,
-            slot_span=2,
-            source_a=cons_sf[0],
-            source_b=cons_sf[1],
         )
-        Match.objects.create(
-            tournament=tournament,
-            phase=phase,
-            round_label="Finale 7\xb0/8\xb0",
-            bracket_pos=2,
-            slot_span=2,
-            source_a=cons_sf[0],
-            source_a_role=loser,
-            source_b=cons_sf[1],
-            source_b_role=loser,
-        )
+    Match.objects.create(
+        tournament=tournament,
+        phase=phase,
+        round_label="Finale 5\xb0/6\xb0",
+        bracket_pos=1,
+        slot_span=2,
+        source_a=cons_sf[0],
+        source_b=cons_sf[1],
+    )
+    Match.objects.create(
+        tournament=tournament,
+        phase=phase,
+        round_label="Finale 7\xb0/8\xb0",
+        bracket_pos=2,
+        slot_span=2,
+        source_a=cons_sf[0],
+        source_a_role=loser,
+        source_b=cons_sf[1],
+        source_b_role=loser,
+    )
 
 
 def seed_brackets(tournament):

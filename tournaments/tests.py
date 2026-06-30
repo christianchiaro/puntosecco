@@ -1474,6 +1474,40 @@ class WildCardBracketTest(TestCase):
         silver_ids = [r["team"].id for r in cls["silver"]]
         self.assertEqual(len(set(silver_ids)), 4)
 
+    def test_add_consolation_command_backfills(self):
+        """Il comando add_consolation crea la consolazione su un tabellone seedato
+        prima della feature, popolandola coi perdenti dei quarti gia' giocati."""
+        from django.core.management import call_command
+
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        resolve_spareggio(t)
+        seed_brackets(t)
+        # Simula il vecchio seeding: niente consolazione.
+        t.matches.filter(
+            round_label__in=["Semifinale 5°-8°", "Finale 5°/6°", "Finale 7°/8°"]
+        ).delete()
+        for m in t.matches.filter(phase=Match.Phase.GOLD, round_label="Quarti"):
+            record_match_score(
+                m, [{"games_a": 6, "games_b": 2}, {"games_a": 6, "games_b": 3}]
+            )
+        self.assertFalse(t.matches.filter(round_label="Semifinale 5°-8°").exists())
+
+        call_command("add_consolation", t.slug)
+
+        cons = t.matches.filter(phase=Match.Phase.GOLD, round_label="Semifinale 5°-8°")
+        self.assertEqual(cons.count(), 2)
+        self.assertEqual(t.matches.filter(round_label="Finale 5°/6°").count(), 1)
+        self.assertEqual(t.matches.filter(round_label="Finale 7°/8°").count(), 1)
+        teams = set()
+        for m in cons:
+            teams.update([m.team_a_id, m.team_b_id])
+        self.assertEqual(len(teams), 4)  # i 4 perdenti dei quarti
+        self.assertNotIn(None, teams)
+        # Idempotente: rilanciarlo non duplica.
+        call_command("add_consolation", t.slug)
+        self.assertEqual(cons.count(), 2)
+
     def test_classifica_page_ok(self):
         t = self._setup_3group()
         play_all_groups_by_seed(t)
