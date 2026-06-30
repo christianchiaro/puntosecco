@@ -295,12 +295,21 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .tournament-card__name { font-size: 1.1rem; font-weight: 700; }
 
 /* --- Classifiche ------------------------------------------------ */
-.groups-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem; }
+/* Gironi impilati in colonna: ogni tabella a tutta larghezza, niente colonne strette. */
+.groups-grid { display: flex; flex-direction: column; gap: 1rem; }
 .standings { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .standings caption { text-align: left; font-weight: 700; padding: .5rem .6rem; background: var(--done-bg); }
 .standings th, .standings td { padding: .4rem .6rem; border-top: 1px solid var(--border); text-align: left; font-size: .9rem; }
 .standings thead th { background: var(--subtle); color: var(--muted); font-size: .78rem; text-transform: uppercase; }
 .standings tbody tr:nth-child(-n+2) td:first-child { color: var(--gold); font-weight: 700; }
+/* La coppia (col. 2) prende lo spazio elastico; le altre colonne sono strette e compatte. */
+.standings th:nth-child(2), .standings td:nth-child(2) { width: 100%; max-width: 0; }
+.standings th:not(:nth-child(2)), .standings td:not(:nth-child(2)) { width: 1%; white-space: nowrap; }
+/* Nome SEMPRE su una riga, troncato con "…" se troppo lungo (mai a capo: il wrap
+   cambierebbe l'altezza delle righe). Il badge gold/silver resta sempre visibile. */
+.standings__coppia { display: flex; align-items: center; gap: .35rem; min-width: 0; }
+.standings__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.standings__coppia .badge { flex: none; margin-left: 0; }
 .badge { font-size: .68rem; font-weight: 700; padding: .05rem .4rem; border-radius: .25rem; margin-left: .3rem; text-transform: uppercase; }
 .badge--gold { background: var(--gold-bg); color: var(--gold); }
 .badge--silver { background: var(--silver-bg); color: var(--silver); }
@@ -526,12 +535,12 @@ input[type="number"], input[type="text"], input[type="password"] {
   .card { padding: 1.35rem 1.25rem; }
   .tournament-card { gap: .45rem; padding: 1.35rem 1.25rem; }
 
-  /* Classifiche: righe alte e ariose, ma i numeri NON vanno a capo (solo la coppia può). */
+  /* Classifiche: righe alte e ariose; nome coppia sempre su una riga (troncato), mai a capo. */
   .groups-grid { gap: 1.4rem; }
   .standings caption { padding: .8rem .95rem; font-size: 1.05rem; }
   .standings th, .standings td { padding: .7rem .4rem; font-size: .88rem; white-space: nowrap; }
   .standings th:first-child, .standings td:first-child { padding-left: .7rem; }
-  .standings th:nth-child(2), .standings td:nth-child(2) { white-space: normal; padding-right: .6rem; }
+  .standings th:nth-child(2), .standings td:nth-child(2) { padding-right: .6rem; }
 
   /* Calendario (lista per orario) */
   .slot-group { margin-bottom: 1.2rem; }

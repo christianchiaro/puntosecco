@@ -971,6 +971,25 @@ class SetupTests(TestCase):
         t2 = create_tournament("Doppione", datetime.date(2026, 7, 2))
         self.assertEqual(t2.slug, "doppione-2")
 
+    def test_draw_auto_repairs_missing_structure(self):
+        # Torneo creato senza struttura (come quelli inseriti a mano dall'admin):
+        # nessun girone, nessun campo. Il sorteggio deve crearli e distribuire le coppie.
+        t = Tournament.objects.create(
+            name="No Struttura",
+            slug="no-struttura",
+            date=datetime.date(2026, 7, 1),
+            num_groups=3,
+            teams_per_group=4,
+        )
+        self.assertEqual(t.groups.count(), 0)
+        self.assertEqual(t.courts.count(), 0)
+        for i in range(12):
+            Team.objects.create(tournament=t, name=f"C{i}", player1="a", player2="b")
+        draw_groups(t)
+        self.assertEqual(t.groups.count(), 3)
+        self.assertEqual(t.courts.count(), 4)
+        self.assertFalse(t.teams.filter(group__isnull=True).exists())
+
     def test_draw_groups_assigns_all_teams(self):
         t = create_tournament("X", datetime.date(2026, 7, 1))
         for i in range(12):  # 3 gironi x 4 = 12 coppie

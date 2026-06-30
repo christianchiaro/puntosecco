@@ -9,8 +9,10 @@
       <tr>
         <td>{{ r.rank }}</td>
         <td>
-          <a href="{% url 'tournaments:team' slug=t.slug team_id=r.team.id %}">{{ r.team.name }}</a>
-          {% if r.rank <= 2 %}<span class="badge badge--gold">gold</span>{% else %}<span class="badge badge--silver">silver</span>{% endif %}
+          <div class="standings__coppia">
+            <a class="standings__name" href="{% url 'tournaments:team' slug=t.slug team_id=r.team.id %}">{{ r.team.name }}</a>
+            {% if r.rank <= 2 %}<span class="badge badge--gold">gold</span>{% else %}<span class="badge badge--silver">silver</span>{% endif %}
+          </div>
         </td>
         <td>{{ r.played }}</td>
         <td>{{ r.wins }}</td>
