@@ -455,10 +455,11 @@ class BracketTests(TestCase):
                 occupied.add(key)
 
     def test_whole_tournament_slot_count(self):
-        # 16 coppie: gironi (6) + knockout con consolazione 5°-8° in entrambi i
-        # tabelloni (quarti 4 + semifinali 4 + finali 4) = 18 slot.
+        # 16 coppie: gironi (6) + knockout in 4 turni (quarti, semi silver+consolazione,
+        # semi gold+finali consolazione, finalissime) con i blocchi >4 partite spezzati
+        # sui campi = 20 slot.
         total = schedule_knockout(self.t)  # slot totali (gironi + knockout)
-        self.assertEqual(total, 18)
+        self.assertEqual(total, 20)
 
     def test_winner_advances_to_semifinal(self):
         qf1 = self.t.matches.get(
@@ -1507,6 +1508,35 @@ class WildCardBracketTest(TestCase):
         # Idempotente: rilanciarlo non duplica.
         call_command("add_consolation", t.slug)
         self.assertEqual(cons.count(), 2)
+
+    def test_knockout_schedule_blocks(self):
+        """Schedule a 4 turni: semi silver + semi consolazione insieme; semi gold +
+        finali consolazione insieme; finali consolazione PRIMA delle finalissime;
+        finalissime gold e silver in contemporanea."""
+        t = self._setup_3group()
+        play_all_groups_by_seed(t)
+        resolve_spareggio(t)
+        seed_brackets(t)
+
+        def slot(label, phase=None):
+            qs = t.matches.filter(round_label=label)
+            if phase:
+                qs = qs.filter(phase=phase)
+            return qs.first().slot_index
+
+        # Finali di consolazione un turno PRIMA delle finalissime gold.
+        self.assertLess(slot("Finale 5°/6°"), slot("Finale", Match.Phase.GOLD))
+        self.assertLess(slot("Finale 7°/8°"), slot("Finale", Match.Phase.GOLD))
+        # Semifinali silver insieme alle semifinali di consolazione.
+        self.assertEqual(
+            slot("Semifinale", Match.Phase.SILVER), slot("Semifinale 5°-8°")
+        )
+        # Semifinali gold insieme alle finali di consolazione.
+        self.assertEqual(slot("Semifinale", Match.Phase.GOLD), slot("Finale 5°/6°"))
+        # Finalissime gold e silver in contemporanea.
+        self.assertEqual(
+            slot("Finale", Match.Phase.GOLD), slot("Finale", Match.Phase.SILVER)
+        )
 
     def test_classifica_page_ok(self):
         t = self._setup_3group()

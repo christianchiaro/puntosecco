@@ -6,6 +6,8 @@ di serie (le 1a dei gironi) sono distribuite e si evitano fino in fondo al tabel
 Supporta wild card per formati come 3 gironi x 4 squadre (gold = 8, silver = 4).
 """
 
+from django.db.models import Q
+
 from .models import Match
 from .scheduling import slot_start
 from .standings import group_ranking, group_standings, wildcard_spareggio
@@ -250,32 +252,62 @@ def seed_brackets(tournament):
 
 
 def _knockout_round_groups(tournament):
-    """Turni knockout in ordine di gioco (gold e silver in parallelo). Finale e
-    finale 3/4 posto giocano insieme nello stesso turno."""
+    """Blocchi del knockout in ordine di gioco. Ogni blocco gioca in contemporanea,
+    riempiendo i campi. Ritorna liste di selettori `(phase|None, round_label)`
+    (phase None = entrambi i tabelloni).
+
+    Pianificazione (riempie 4 campi a turno, finalissime a chiudere):
+      quarti
+      → semifinali SILVER + semifinali di consolazione (5°-8°)
+      → semifinali GOLD + finali di consolazione (5°/6° e 7°/8°)
+      → finali 1°/2° e 3°/4° di entrambi i tabelloni.
+    Le semifinali silver (indipendenti dai quarti gold) anticipano per liberare l'ultimo
+    turno alle sole finalissime; le finali di consolazione si giocano un turno prima.
+    """
+    gold, silver = Match.Phase.GOLD, Match.Phase.SILVER
     present = set(
-        tournament.matches.filter(
-            phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]
-        ).values_list("round_label", flat=True)
-    )
-    groups = [[lbl] for lbl in ("Sedicesimi", "Ottavi", "Quarti") if lbl in present]
-    # Le semifinali di consolazione (5\xb0-8\xb0) si giocano insieme alle semifinali.
-    semis = [lbl for lbl in ("Semifinale", "Semifinale 5\xb0-8\xb0") if lbl in present]
-    if semis:
-        groups.append(semis)
-    # Tutte le finali (incluse 5\xb0/6\xb0 e 7\xb0/8\xb0) nello stesso turno.
-    finals = [
-        lbl
-        for lbl in (
-            "Finale",
-            "Finale 3\xb0/4\xb0",
-            "Finale 5\xb0/6\xb0",
-            "Finale 7\xb0/8\xb0",
+        tournament.matches.filter(phase__in=[gold, silver]).values_list(
+            "phase", "round_label"
         )
-        if lbl in present
+    )
+    labels = {label for _, label in present}
+    has_consolation = any(
+        label in ("Semifinale 5\xb0-8\xb0", "Finale 5\xb0/6\xb0", "Finale 7\xb0/8\xb0")
+        for label in labels
+    )
+
+    blocks = []
+    for label in ("Sedicesimi", "Ottavi", "Quarti"):
+        if label in labels:
+            blocks.append([(None, label)])
+
+    if has_consolation:
+        secondary = []  # semifinali silver + semifinali di consolazione
+        if (silver, "Semifinale") in present:
+            secondary.append((silver, "Semifinale"))
+        if "Semifinale 5\xb0-8\xb0" in labels:
+            secondary.append((None, "Semifinale 5\xb0-8\xb0"))
+        if secondary:
+            blocks.append(secondary)
+        gold_semi = []  # semifinali gold + finali di consolazione
+        if (gold, "Semifinale") in present:
+            gold_semi.append((gold, "Semifinale"))
+        gold_semi += [
+            (None, label)
+            for label in ("Finale 5\xb0/6\xb0", "Finale 7\xb0/8\xb0")
+            if label in labels
+        ]
+        if gold_semi:
+            blocks.append(gold_semi)
+    elif "Semifinale" in labels:
+        blocks.append([(None, "Semifinale")])
+
+    finals = [
+        (None, label) for label in ("Finale", "Finale 3\xb0/4\xb0") if label in labels
     ]
     if finals:
-        groups.append(finals)
-    return groups
+        blocks.append(finals)
+    return blocks
 
 
 def schedule_knockout(tournament):
@@ -286,11 +318,16 @@ def schedule_knockout(tournament):
     courts = list(tournament.courts.order_by("number"))
     slot = _group_stage_slots(tournament)
 
-    for labels in _knockout_round_groups(tournament):
+    for block in _knockout_round_groups(tournament):
+        q = Q()
+        for phase, label in block:
+            q |= (
+                Q(round_label=label)
+                if phase is None
+                else Q(phase=phase, round_label=label)
+            )
         matches = list(
-            tournament.matches.filter(
-                phase__in=[Match.Phase.GOLD, Match.Phase.SILVER], round_label__in=labels
-            ).order_by("phase", "bracket_pos")
+            tournament.matches.filter(q).order_by("round_label", "phase", "bracket_pos")
         )
         # Spezza in blocchi grandi quanto i campi; ogni blocco occupa slot_span slot.
         for start in range(0, len(matches), len(courts)):
