@@ -282,6 +282,38 @@ class StandingsTests(TestCase):
         self.assertEqual(top["diff"], 18)  # 3 set vinti 6-0
         self.assertEqual(rows[-1]["wins"], 0)
 
+    def test_partial_score_counts_as_provisional_result(self):
+        # Classifica "live": una partita in corso con parziale conta come risultato
+        # provvisorio - giocata + vittoria a chi è avanti + game nella differenza.
+        g = self.t.groups.get(name="A")
+        t1, t2 = list(g.teams.order_by("seed"))[:2]
+        m = g.matches.filter(team_a__in=[t1, t2], team_b__in=[t1, t2]).first()
+        record_match_score(m, [{"games_a": 3, "games_b": 1}], finalize=False)
+
+        rows = {r["team"].id: r for r in group_standings(g)}
+        lead, trail = rows[m.team_a_id], rows[m.team_b_id]
+        # Chi è avanti: vittoria provvisoria, giocata contata, game nella diff, flag live.
+        self.assertEqual(lead["gf"], 3)
+        self.assertEqual(lead["diff"], 2)
+        self.assertEqual(lead["wins"], 1)
+        self.assertEqual(lead["played"], 1)
+        self.assertTrue(lead["live"])
+        # L'avversario: nessuna vittoria, ma giocata e diff negativa, anch'esso live.
+        self.assertEqual(trail["wins"], 0)
+        self.assertEqual(trail["diff"], -2)
+        self.assertTrue(trail["live"])
+
+    def test_partial_tie_gives_no_provisional_win(self):
+        # Parità di game in corso: nessuna vittoria provvisoria a nessuno.
+        g = self.t.groups.get(name="A")
+        t1, t2 = list(g.teams.order_by("seed"))[:2]
+        m = g.matches.filter(team_a__in=[t1, t2], team_b__in=[t1, t2]).first()
+        record_match_score(m, [{"games_a": 2, "games_b": 2}], finalize=False)
+        rows = {r["team"].id: r for r in group_standings(g)}
+        self.assertEqual(rows[t1.id]["wins"], 0)
+        self.assertEqual(rows[t2.id]["wins"], 0)
+        self.assertTrue(rows[t1.id]["live"])
+
     def test_head_to_head_breaks_tie(self):
         # Triangolo: niente seed deterministico. Costruisco due coppie a pari vittorie
         # dove lo scontro diretto decide.

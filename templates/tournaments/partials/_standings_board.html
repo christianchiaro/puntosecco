@@ -1,0 +1,6 @@
+{# Tabelle classifiche per girone. Richiede `groups` (lista di (group, rows)) e `t`. #}
+<div class="groups-grid">
+  {% for g, rows in groups %}
+    {% include "tournaments/partials/_standings_table.html" with group=g rows=rows %}
+  {% endfor %}
+</div>

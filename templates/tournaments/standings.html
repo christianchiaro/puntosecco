@@ -4,10 +4,15 @@
 
 {% block content %}
   {% include "tournaments/partials/_tnav.html" %}
-  <h1>Classifiche gironi</h1>
-  <div class="groups-grid">
-    {% for g, rows in groups %}
-      {% include "tournaments/partials/_standings_table.html" with group=g rows=rows %}
-    {% endfor %}
+  <h1>Classifiche gironi
+    <span id="standings-spinner" class="htmx-indicator"><span class="skeleton skeleton-pill">aggiornamento…</span></span>
+  </h1>
+  {% comment %}Polling HTMX ogni 60s: le classifiche si aggiornano da sole (risultati finali e
+  game dei parziali) senza ricaricare. Stesso file della pagina piena → DOM identico.{% endcomment %}
+  <div hx-get="{% url 'tournaments:standings_board' slug=t.slug %}"
+       hx-trigger="every 60s"
+       hx-swap="innerHTML transition:false"
+       hx-indicator="#standings-spinner">
+    {% include "tournaments/partials/_standings_board.html" %}
   </div>
 {% endblock %}

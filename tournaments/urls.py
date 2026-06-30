@@ -10,6 +10,11 @@ urlpatterns = [
     path("t/<slug:slug>/iscrizione/", views.register, name="register"),
     path("t/<slug:slug>/gestione/", views.manage, name="manage"),
     path("t/<slug:slug>/classifiche/", views.standings, name="standings"),
+    path(
+        "t/<slug:slug>/classifiche/board/",
+        views.standings_board,
+        name="standings_board",
+    ),
     path("t/<slug:slug>/calendario/", views.schedule, name="schedule"),
     path("t/<slug:slug>/tabelloni/", views.brackets, name="brackets"),
     path("t/<slug:slug>/live/", views.live, name="live"),

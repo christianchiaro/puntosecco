@@ -12,6 +12,7 @@
           <div class="standings__coppia">
             <a class="standings__name" href="{% url 'tournaments:team' slug=t.slug team_id=r.team.id %}">{{ r.team.name }}</a>
             {% if r.rank <= 2 %}<span class="badge badge--gold">gold</span>{% else %}<span class="badge badge--silver">silver</span>{% endif %}
+            {% if r.live %}<span class="std-live" title="Risultato in corso: provvisorio">● live</span>{% endif %}
           </div>
         </td>
         <td>{{ r.played }}</td>

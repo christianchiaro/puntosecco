@@ -310,6 +310,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .standings__coppia { display: flex; align-items: center; gap: .35rem; min-width: 0; }
 .standings__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .standings__coppia .badge { flex: none; margin-left: 0; }
+.std-live { flex: none; color: var(--live); font-weight: 700; font-size: .68rem; text-transform: uppercase; white-space: nowrap; }
 .badge { font-size: .68rem; font-weight: 700; padding: .05rem .4rem; border-radius: .25rem; margin-left: .3rem; text-transform: uppercase; }
 .badge--gold { background: var(--gold-bg); color: var(--gold); }
 .badge--silver { background: var(--silver-bg); color: var(--silver); }

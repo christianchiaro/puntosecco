@@ -132,6 +132,17 @@ def standings(request, slug):
     return render(request, "tournaments/standings.html", {"t": t, "groups": groups})
 
 
+def standings_board(request, slug):
+    """Partial polled dalla pagina classifiche (auto-refresh ogni 60s)."""
+    t = _tournament(slug)
+    groups = [(g, group_standings(g)) for g in t.groups.all()]
+    return render(
+        request,
+        "tournaments/partials/_standings_board.html",
+        {"t": t, "groups": groups},
+    )
+
+
 def schedule(request, slug):
     t = _tournament(slug)
     courts, rows, slots = build_schedule_grid(t)
