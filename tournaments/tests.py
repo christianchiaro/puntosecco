@@ -293,6 +293,64 @@ class GroupScheduleTests(TestCase):
         self.assertTrue(all(m.group_id is not None for m in self.matches))
 
 
+class GroupScheduleCourtPackingTest(TestCase):
+    """Formato a 12 (3 gironi x 4): 6 partite/turno non e' multiplo di 4 campi.
+
+    Regressione: il vecchio scheduler bloccava tutti i gironi su turni globali
+    sincronizzati e lasciava 2 campi vuoti ad ogni turno incompleto. Lo scheduler
+    greedy "primo slot libero" deve riempire sempre tutti i campi tranne, al piu',
+    l'ultimo slot (inevitabile: 18 partite non e' multiplo di 4 campi)."""
+
+    def setUp(self):
+        self.t = make_3group_tournament()
+        self.slots_used = generate_group_stage(self.t)
+        self.matches = list(self.t.matches.filter(phase=Match.Phase.GROUP))
+
+    def test_minimum_slot_count(self):
+        # 18 partite / 4 campi = 4.5 -> minimo teorico 5 slot (non piu' 6).
+        self.assertEqual(self.slots_used, 5)
+
+    def test_no_empty_courts_except_last_slot(self):
+        per_slot = {}
+        for m in self.matches:
+            per_slot[m.slot_index] = per_slot.get(m.slot_index, 0) + 1
+        for slot, count in per_slot.items():
+            if slot < self.slots_used - 1:
+                self.assertEqual(
+                    count, 4, f"Slot {slot} ha campi vuoti: {count}/4 partite"
+                )
+
+    def test_no_team_double_booked_in_a_slot(self):
+        seen = {}
+        for m in self.matches:
+            bucket = seen.setdefault(m.slot_index, set())
+            for tid in (m.team_a_id, m.team_b_id):
+                self.assertNotIn(tid, bucket)
+                bucket.add(tid)
+
+    def test_no_court_hosts_two_matches_in_a_slot(self):
+        seen = set()
+        for m in self.matches:
+            key = (m.slot_index, m.court_id)
+            self.assertNotIn(key, seen)
+            seen.add(key)
+
+    def test_every_pair_plays_exactly_once_per_group(self):
+        for g in self.t.groups.all():
+            teams = list(g.teams.all())
+            expected = {
+                frozenset((a.id, b.id))
+                for i, a in enumerate(teams)
+                for b in teams[i + 1 :]
+            }
+            got = {
+                frozenset((m.team_a_id, m.team_b_id))
+                for m in self.matches
+                if m.group_id == g.id
+            }
+            self.assertEqual(got, expected)
+
+
 class StandingsTests(TestCase):
     def setUp(self):
         self.t = make_full_tournament()
