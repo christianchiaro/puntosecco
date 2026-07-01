@@ -16,7 +16,7 @@ from .awards import (
     team_achievements,
     tournament_awards,
 )
-from .bracket_svg import render_bracket_svg
+from .bracket_svg import render_bracket_svg, render_consolation_svg
 from .brackets import seed_brackets
 from .models import Match, ScoreLog, Team, Tournament
 from .scheduling import generate_group_stage, slot_start
@@ -30,10 +30,6 @@ staff_required = user_passes_test(lambda u: u.is_staff)
 
 def _tournament(slug):
     return get_object_or_404(Tournament, slug=slug)
-
-
-def _ko_qs(tournament):
-    return tournament.matches.filter(phase__in=[Match.Phase.GOLD, Match.Phase.SILVER])
 
 
 # --- Helper di presentazione --------------------------------------------------
@@ -86,26 +82,6 @@ def build_schedule_grid(tournament):
         for s in sorted(by_slot)
     ]
     return courts, rows, slots
-
-
-def bracket_data(tournament, phase):
-    qs = (
-        _ko_qs(tournament)
-        .filter(phase=phase)
-        .select_related("team_a", "team_b", "court")
-    )
-    return {
-        "quarti": list(qs.filter(round_label="Quarti").order_by("bracket_pos")),
-        "semifinali": list(qs.filter(round_label="Semifinale").order_by("bracket_pos")),
-        "finale": qs.filter(round_label="Finale").first(),
-        "terzo": qs.filter(round_label="Finale 3°/4°").first(),
-        # Consolazione 5°-8° (solo gold): 2 semifinali + finali 5°/6° e 7°/8°.
-        "cons_semi": list(
-            qs.filter(round_label="Semifinale 5°-8°").order_by("bracket_pos")
-        ),
-        "finale_56": qs.filter(round_label="Finale 5°/6°").first(),
-        "finale_78": qs.filter(round_label="Finale 7°/8°").first(),
-    }
 
 
 def live_context(tournament):
@@ -239,14 +215,20 @@ def schedule(request, slug):
 
 
 def brackets(request, slug):
+    """Stesso rendering SVG della modalità TV (_bracket_svgs): un'unica fonte di
+    verità per il tabellone, niente doppio markup da tenere allineato."""
     t = _tournament(slug)
+    gold_svg, gold_cons_svg = _bracket_svgs(t, Match.Phase.GOLD)
+    silver_svg, silver_cons_svg = _bracket_svgs(t, Match.Phase.SILVER)
     return render(
         request,
         "tournaments/brackets.html",
         {
             "t": t,
-            "gold": bracket_data(t, Match.Phase.GOLD),
-            "silver": bracket_data(t, Match.Phase.SILVER),
+            "gold_bracket_svg": gold_svg,
+            "gold_consolation_svg": gold_cons_svg,
+            "silver_bracket_svg": silver_svg,
+            "silver_consolation_svg": silver_cons_svg,
         },
     )
 
@@ -292,10 +274,9 @@ _BRACKET_SEQ = ["Sedicesimi", "Ottavi", "Quarti", "Semifinale", "Finale"]
 
 
 def _bracket_rounds(tournament, phase):
-    """Turni del tabellone (escluso 3°/4°) come colonne, dal primo turno alla finale."""
+    """Turni del tabellone principale (quarti...finale) come colonne."""
     matches = list(
-        tournament.matches.filter(phase=phase)
-        .exclude(round_label="Finale 3°/4°")
+        tournament.matches.filter(phase=phase, round_label__in=_BRACKET_SEQ)
         .select_related("team_a", "team_b")
         .prefetch_related("sets")
     )
@@ -308,6 +289,47 @@ def _bracket_rounds(tournament, phase):
         if ms:
             rounds.append({"abbr": _BRACKET_ABBR[lbl], "matches": ms})
     return rounds
+
+
+def _bracket_svgs(tournament, phase):
+    """(svg tabellone principale + 3°/4°, svg consolazione 5°-8°) per un tabellone.
+
+    Stesso identico rendering usato dalla modalità TV e dalla pagina Tabelloni:
+    un'unica fonte di verità così le due viste sono per costruzione uguali.
+    """
+    sel = ("team_a", "team_b")
+    third_place = (
+        tournament.matches.filter(phase=phase, round_label="Finale 3°/4°")
+        .select_related(*sel)
+        .prefetch_related("sets")
+        .first()
+    )
+    main_svg = render_bracket_svg(
+        _bracket_rounds(tournament, phase), third_place=third_place
+    )
+
+    cons_sf = list(
+        tournament.matches.filter(phase=phase, round_label="Semifinale 5°-8°")
+        .select_related(*sel)
+        .prefetch_related("sets")
+        .order_by("bracket_pos")
+    )
+    finale_56 = (
+        tournament.matches.filter(phase=phase, round_label="Finale 5°/6°")
+        .select_related(*sel)
+        .prefetch_related("sets")
+        .first()
+    )
+    finale_78 = (
+        tournament.matches.filter(phase=phase, round_label="Finale 7°/8°")
+        .select_related(*sel)
+        .prefetch_related("sets")
+        .first()
+    )
+    cons_svg = render_consolation_svg(
+        cons_sf, [("5°/6° posto", finale_56), ("7°/8° posto", finale_78)]
+    )
+    return main_svg, cons_svg
 
 
 def _tv_context(tournament):
@@ -345,6 +367,12 @@ def _tv_context(tournament):
     has_ko = tournament.matches.filter(
         phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]
     ).exists()
+    gold_svg, gold_cons_svg = (
+        _bracket_svgs(tournament, Match.Phase.GOLD) if has_ko else ("", "")
+    )
+    silver_svg, silver_cons_svg = (
+        _bracket_svgs(tournament, Match.Phase.SILVER) if has_ko else ("", "")
+    )
     return {
         "board": board,
         "ticker": ticker,
@@ -352,16 +380,10 @@ def _tv_context(tournament):
         "spareggio": spareggio,
         "champion": champ,
         "podium_data": podium(tournament) if champ else None,
-        "gold_bracket_svg": (
-            render_bracket_svg(_bracket_rounds(tournament, Match.Phase.GOLD))
-            if has_ko
-            else ""
-        ),
-        "silver_bracket_svg": (
-            render_bracket_svg(_bracket_rounds(tournament, Match.Phase.SILVER))
-            if has_ko
-            else ""
-        ),
+        "gold_bracket_svg": gold_svg,
+        "gold_consolation_svg": gold_cons_svg,
+        "silver_bracket_svg": silver_svg,
+        "silver_consolation_svg": silver_cons_svg,
     }
 
 

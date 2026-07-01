@@ -630,11 +630,14 @@ class ViewTests(TestCase):
         self.assertContains(resp, "Campo 1")
 
     def test_brackets_shows_gold_and_silver_seeding(self):
+        # Tabellone reso come SVG (bracket_svg.py): turni abbreviati (QF/SF/F), non
+        # "Quarti" per esteso. Verifica che i turni e il seeding reale compaiano.
         resp = self.client.get(self.url("brackets"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Gold")
         self.assertContains(resp, "Silver")
-        self.assertContains(resp, "Quarti")
+        self.assertContains(resp, "QF")  # turno dei quarti, abbreviato nell'SVG
+        self.assertContains(resp, "A1")  # testa di serie del girone A, seeding reale
 
     def test_live_page_ok(self):
         resp = self.client.get(self.url("live"))

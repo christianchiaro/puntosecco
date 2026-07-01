@@ -1,6 +1,7 @@
 """Rende un tabellone a eliminazione come SVG preciso (coordinate calcolate).
 
-Usato dalla modalità TV: niente trucchi CSS, linee e box allineati al pixel.
+Usato sia dalla modalità TV sia dalla pagina Tabelloni (stesso identico markup):
+niente trucchi CSS, linee e box allineati al pixel.
 """
 
 import html
@@ -28,8 +29,46 @@ def _name(team):
     return html.escape(n if len(n) <= 22 else n[:21] + "…")
 
 
-def render_bracket_svg(rounds):
-    """`rounds`: lista di {abbr, matches} dal primo turno alla finale. Ritorna stringa SVG."""
+def _draw_box(p, x, cy, label, match):
+    """Aggiunge label + box con le due coppie a `p` (lista di frammenti SVG)."""
+    top = cy - BOX_H / 2
+    p.append(
+        f'<text x="{x + 2:.0f}" y="{top - 8:.0f}" fill="{MUTE}" font-size="13" '
+        f'font-family="{FONT}">{html.escape(label)}</text>'
+    )
+    p.append(
+        f'<rect x="{x:.0f}" y="{top:.0f}" width="{BOX_W}" height="{BOX_H}" rx="7" '
+        f'fill="{BOXBG}" stroke="{LINE}"/>'
+    )
+    p.append(
+        f'<line x1="{x:.0f}" y1="{top + ROW_H:.0f}" x2="{x + BOX_W:.0f}" '
+        f'y2="{top + ROW_H:.0f}" stroke="{LINE}"/>'
+    )
+    rows = [
+        (match.team_a, match.team_a_id, match.sets_a),
+        (match.team_b, match.team_b_id, match.sets_b),
+    ]
+    for ri, (team, tid, sets) in enumerate(rows):
+        ty = top + ri * ROW_H + ROW_H / 2 + 6
+        win = match.is_played and match.winner_id == tid
+        color = WIN if win else INK
+        weight = "700" if win else "400"
+        p.append(
+            f'<text x="{x + 14:.0f}" y="{ty:.0f}" fill="{color}" font-size="17" '
+            f'font-weight="{weight}" font-family="{FONT}">{_name(team)}</text>'
+        )
+        if match.is_played:
+            p.append(
+                f'<text x="{x + BOX_W - 14:.0f}" y="{ty:.0f}" fill="{color}" font-size="17" '
+                f'font-weight="{weight}" text-anchor="end" font-family="{FONT}">{sets}</text>'
+            )
+
+
+def render_bracket_svg(rounds, third_place=None):
+    """`rounds`: lista di {abbr, matches} dal primo turno alla finale.
+    `third_place`: partita Finale 3°/4° opzionale, disegnata come box a se' sotto la
+    finale (stessa colonna, senza connettori - riflette solo il piazzamento).
+    Ritorna stringa SVG (vuota se non c'e' nulla da disegnare)."""
     if not rounds or not rounds[0]["matches"]:
         return ""
 
@@ -50,13 +89,16 @@ def render_bracket_svg(rounds):
     ncol = len(rounds)
     width = PAD * 2 + ncol * BOX_W + (ncol - 1) * COL_GAP
     height = PAD + LABEL_H + n0 * pitch
+    if third_place:
+        height += LABEL_H + BOX_H + V_GAP
 
     def x_of(r):
         return PAD + r * (BOX_W + COL_GAP)
 
     p = [
-        f'<svg class="tv-bracket-svg" viewBox="0 0 {width:.0f} {height:.0f}" '
-        'preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">'
+        f'<svg class="tv-bracket-svg" width="{width:.0f}" height="{height:.0f}" '
+        f'viewBox="0 0 {width:.0f} {height:.0f}" preserveAspectRatio="xMidYMid meet" '
+        'xmlns="http://www.w3.org/2000/svg">'
     ]
 
     # Connettori (sotto i box): stub orizzontali + verticale della coppia + ingresso al turno dopo.
@@ -72,42 +114,63 @@ def render_bracket_svg(rounds):
                 f'fill="none" stroke="{LINE}" stroke-width="2"/>'
             )
 
-    # Box + testi.
+    # Box + testi di ogni turno.
     for r, rnd in enumerate(rounds):
         xr = x_of(r)
         for i, m in enumerate(rnd["matches"]):
-            cy = centers[r][i]
-            top = cy - BOX_H / 2
+            _draw_box(p, xr, centers[r][i], f'{rnd["abbr"]} · Game {i + 1}', m)
+
+    if third_place:
+        final_cy = centers[-1][0]
+        tp_cy = final_cy + BOX_H + LABEL_H + V_GAP
+        _draw_box(p, x_of(ncol - 1), tp_cy, "Finale 3°/4°", third_place)
+
+    p.append("</svg>")
+    return "".join(p)
+
+
+def render_consolation_svg(sf_matches, finals):
+    """Tabellone di consolazione 5°-8°: 2 semifinali -> 2 finali PARALLELE (non
+    convergono a 1 come nel tabellone principale). `finals`: lista di (label, match).
+    Ritorna stringa SVG (vuota se non ci sono semifinali)."""
+    if not sf_matches:
+        return ""
+
+    n = len(sf_matches)
+    pitch = BOX_H + LABEL_H + V_GAP
+    centers0 = [PAD + LABEL_H + i * pitch + BOX_H / 2 for i in range(n)]
+    mid = sum(centers0) / len(centers0)
+    spread = (BOX_H + V_GAP) / 2
+    centers1 = [mid - spread, mid + spread] if len(finals) == 2 else [mid] * len(finals)
+
+    width = PAD * 2 + 2 * BOX_W + COL_GAP
+    height = PAD + LABEL_H + n * pitch
+
+    x0 = PAD
+    x1 = PAD + BOX_W + COL_GAP
+    rightx = x0 + BOX_W
+    midx = rightx + COL_GAP / 2
+
+    p = [
+        f'<svg class="tv-bracket-svg" width="{width:.0f}" height="{height:.0f}" '
+        f'viewBox="0 0 {width:.0f} {height:.0f}" preserveAspectRatio="xMidYMid meet" '
+        'xmlns="http://www.w3.org/2000/svg">'
+    ]
+
+    # Connettori a incrocio: ogni finale e' raggiungibile da entrambe le semifinali
+    # (vince chi vince la propria SF, gioca l'altra finale chi la perde).
+    for cy_final in centers1:
+        for cy_sf in centers0:
             p.append(
-                f'<text x="{xr + 2:.0f}" y="{top - 8:.0f}" fill="{MUTE}" font-size="13" '
-                f'font-family="{FONT}">{html.escape(rnd["abbr"])} · Game {i + 1}</text>'
+                f'<path d="M{rightx:.0f},{cy_sf:.0f} H{midx:.0f} V{cy_final:.0f} H{x1:.0f}" '
+                f'fill="none" stroke="{LINE}" stroke-width="2"/>'
             )
-            p.append(
-                f'<rect x="{xr:.0f}" y="{top:.0f}" width="{BOX_W}" height="{BOX_H}" rx="7" '
-                f'fill="{BOXBG}" stroke="{LINE}"/>'
-            )
-            p.append(
-                f'<line x1="{xr:.0f}" y1="{top + ROW_H:.0f}" x2="{xr + BOX_W:.0f}" '
-                f'y2="{top + ROW_H:.0f}" stroke="{LINE}"/>'
-            )
-            rows = [
-                (m.team_a, m.team_a_id, m.sets_a),
-                (m.team_b, m.team_b_id, m.sets_b),
-            ]
-            for ri, (team, tid, sets) in enumerate(rows):
-                ty = top + ri * ROW_H + ROW_H / 2 + 6
-                win = m.is_played and m.winner_id == tid
-                color = WIN if win else INK
-                weight = "700" if win else "400"
-                p.append(
-                    f'<text x="{xr + 14:.0f}" y="{ty:.0f}" fill="{color}" font-size="17" '
-                    f'font-weight="{weight}" font-family="{FONT}">{_name(team)}</text>'
-                )
-                if m.is_played:
-                    p.append(
-                        f'<text x="{xr + BOX_W - 14:.0f}" y="{ty:.0f}" fill="{color}" font-size="17" '
-                        f'font-weight="{weight}" text-anchor="end" font-family="{FONT}">{sets}</text>'
-                    )
+
+    for i, m in enumerate(sf_matches):
+        _draw_box(p, x0, centers0[i], f"Semifinale 5°-8° · Game {i + 1}", m)
+    for (label, m), cy in zip(finals, centers1):
+        if m:
+            _draw_box(p, x1, cy, label, m)
 
     p.append("</svg>")
     return "".join(p)

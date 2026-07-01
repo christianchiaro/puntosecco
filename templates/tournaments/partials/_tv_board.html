@@ -57,12 +57,20 @@
     <section class="tv-scene tv-scene--bracket">
       <h2 class="tv-scene__title">Tabellone Gold</h2>
       <div class="tv-bracket-wrap">{{ gold_bracket_svg|safe }}</div>
+      {% if gold_consolation_svg %}
+        <h3 class="tv-bracket-wrap__subtitle">Consolazione 5°-8°</h3>
+        <div class="tv-bracket-wrap tv-bracket-wrap--cons">{{ gold_consolation_svg|safe }}</div>
+      {% endif %}
     </section>
   {% endif %}
   {% if silver_bracket_svg %}
     <section class="tv-scene tv-scene--bracket">
       <h2 class="tv-scene__title">Tabellone Silver</h2>
       <div class="tv-bracket-wrap">{{ silver_bracket_svg|safe }}</div>
+      {% if silver_consolation_svg %}
+        <h3 class="tv-bracket-wrap__subtitle">Consolazione 5°-8°</h3>
+        <div class="tv-bracket-wrap tv-bracket-wrap--cons">{{ silver_consolation_svg|safe }}</div>
+      {% endif %}
     </section>
   {% endif %}
 

@@ -5,6 +5,33 @@
 {% block content %}
   {% include "tournaments/partials/_tnav.html" %}
   <h1>Tabelloni</h1>
-  {% include "tournaments/partials/_bracket.html" with data=gold title="Gold" %}
-  {% include "tournaments/partials/_bracket.html" with data=silver title="Silver" %}
+
+  {% comment %}Stesso identico SVG (bracket_svg.py) mostrato in modalità TV: una sola
+  fonte di verità, così le due viste sono per costruzione uguali. Card sempre scura
+  (colori dell'SVG fissi) indipendentemente dal tema chiaro/scuro del sito.{% endcomment %}
+  {% if gold_bracket_svg %}
+    <section class="bracket-card">
+      <h2 class="bracket-card__title">Gold</h2>
+      <div class="tv-bracket-wrap">{{ gold_bracket_svg|safe }}</div>
+      {% if gold_consolation_svg %}
+        <h3 class="tv-bracket-wrap__subtitle">Consolazione 5°-8°</h3>
+        <div class="tv-bracket-wrap tv-bracket-wrap--cons">{{ gold_consolation_svg|safe }}</div>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if silver_bracket_svg %}
+    <section class="bracket-card">
+      <h2 class="bracket-card__title">Silver</h2>
+      <div class="tv-bracket-wrap">{{ silver_bracket_svg|safe }}</div>
+      {% if silver_consolation_svg %}
+        <h3 class="tv-bracket-wrap__subtitle">Consolazione 5°-8°</h3>
+        <div class="tv-bracket-wrap tv-bracket-wrap--cons">{{ silver_consolation_svg|safe }}</div>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if not gold_bracket_svg and not silver_bracket_svg %}
+    <p class="muted">I tabelloni non sono ancora stati generati.</p>
+  {% endif %}
 {% endblock %}
