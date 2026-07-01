@@ -23,11 +23,17 @@ SET_GAP = 22
 FONT = "system-ui,-apple-system,sans-serif"
 
 
-def _name(team):
+def _name(team, n_sets=0):
     if not team:
         return "-"
     n = team.name
-    return html.escape(n if len(n) <= 22 else n[:21] + "…")
+    # Lo spazio libero per il nome si restringe con più set mostrati (i punteggi
+    # sono allineati a destra, ogni set occupa SET_GAP px): un limite fisso di
+    # caratteri non basta, con 2-3 set il nome finirebbe a sovrapporre i punteggi.
+    # Stima approssimativa ~9.5px/carattere al font-size 17 usato in _draw_box.
+    available = BOX_W - 28 - n_sets * SET_GAP
+    max_chars = max(8, int(available / 9.5))
+    return html.escape(n if len(n) <= max_chars else n[: max_chars - 1] + "…")
 
 
 def _draw_box(p, x, cy, label, match):
@@ -62,7 +68,7 @@ def _draw_box(p, x, cy, label, match):
         weight = "700" if win else "400"
         p.append(
             f'<text x="{x + 14:.0f}" y="{ty:.0f}" fill="{color}" font-size="17" '
-            f'font-weight="{weight}" font-family="{FONT}">{_name(team)}</text>'
+            f'font-weight="{weight}" font-family="{FONT}">{_name(team, n_sets)}</text>'
         )
         for si, s in enumerate(sets):
             sx = x + BOX_W - 14 - (n_sets - 1 - si) * SET_GAP

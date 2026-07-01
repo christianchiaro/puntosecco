@@ -13,6 +13,7 @@ from .awards import (
     team_achievements,
     tournament_awards,
 )
+from .bracket_svg import _name
 from .brackets import schedule_knockout, seed_brackets
 from .models import Court, Group, Match, Team, Tournament
 from .scheduling import generate_group_stage, round_robin_rounds, slot_start
@@ -604,6 +605,39 @@ class BracketTests(TestCase):
         self.assertEqual(sf1.team_a_id, b.id)  # team aggiornato
         self.assertEqual(sf1.status, Match.Status.SCHEDULED)  # risultato non più valido
         self.assertIsNone(sf1.winner_id)
+
+
+class BracketSvgNameTruncationTests(TestCase):
+    """`_name()` tronca i nomi lunghi nei box del tabellone SVG: lo spazio
+    disponibile si restringe con più set mostrati (i punteggi sono allineati a
+    destra), quindi il limite di caratteri deve dipendere da `n_sets`, non essere
+    fisso - altrimenti un nome lungo può sovrapporsi ai punteggi."""
+
+    def _team(self, name):
+        return Team(name=name)
+
+    def test_short_name_untouched(self):
+        self.assertEqual(_name(self._team("Rossi/Bianchi"), n_sets=0), "Rossi/Bianchi")
+
+    def test_no_team_shows_dash(self):
+        self.assertEqual(_name(None, n_sets=2), "-")
+
+    def test_more_sets_means_shorter_budget(self):
+        long_name = "Della Valle/Sant'Ambrogio Lunghissimo"
+        truncated_0 = _name(self._team(long_name), n_sets=0)
+        truncated_3 = _name(self._team(long_name), n_sets=3)
+        self.assertTrue(truncated_0.endswith("…"))
+        self.assertTrue(truncated_3.endswith("…"))
+        # Con più set mostrati resta meno spazio per il nome.
+        self.assertLess(len(truncated_3), len(truncated_0))
+
+    def test_truncated_name_has_a_floor(self):
+        # Anche in condizioni estreme (tanti set), non tronca a lunghezza assurda.
+        truncated = _name(self._team("Nome Coppia Molto Lungo Davvero"), n_sets=3)
+        self.assertGreaterEqual(len(truncated), 8)
+
+    def test_html_escaped(self):
+        self.assertIn("&amp;", _name(self._team("A & B"), n_sets=0))
 
 
 class ViewTests(TestCase):
