@@ -285,7 +285,43 @@ body.tv main { padding-bottom: 4rem; }
    nel viewport fisso; qui deve restare leggibile). */
 .bracket-card .tv-bracket-svg { width: auto; max-height: none; }
 
-@media (max-width: 760px) { .tv-grid { grid-template-columns: 1fr; padding: 1rem; } }
+@media (max-width: 760px) {
+  .tv-grid { grid-template-columns: 1fr; padding: 1rem; }
+
+  /* Header: font/padding ridotti + wrap su riga propria se non ci sta, invece di spezzare
+     il testo del brand su più righe (il nome torneo è testo nudo nel markup, non in uno
+     span dedicato, quindi non è troncabile con ellissi senza toccare il template). */
+  .tv-header { flex-wrap: wrap; font-size: 1.05rem; padding: .7rem 1rem; gap: .5rem; row-gap: .4rem; }
+  .tv-header__brand { min-width: 0; }
+  .tv-header__mark { width: 28px; height: 28px; }
+  .tv-navbtn { width: 2.1rem; height: 2.1rem; font-size: 1.3rem; }
+
+  /* Bracket SVG: dimensione naturale + scroll orizzontale (come .bracket-card), invece di
+     scalare a width:100% che rende il testo interno illeggibile su schermi stretti. */
+  .tv-bracket-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tv-bracket-svg { width: auto; max-height: none; }
+
+  /* Scala generale: dimensioni pensate per TV grande sono sproporzionate su mobile. */
+  .tv-cell { padding: 1rem 1.1rem; min-height: 18vh; min-width: 0; }
+  .tv-court { font-size: 1rem; }
+  .tv-team { font-size: clamp(1.3rem, 5.5vw, 3.2rem); }
+  .tv-score { font-size: clamp(1.7rem, 7vw, 4.5rem); }
+  /* .tv-score-row/.tv-score-table sono flex-item senza min-width:0 di default: con
+     .tv-score-name in nowrap, il loro min-content può eccedere la colonna della grid
+     e far traboccare l'intera card fuori dal viewport (overflow orizzontale). */
+  .tv-score-table, .tv-score-row { min-width: 0; }
+  .tv-score-name { font-size: clamp(1.2rem, 5vw, 2.7rem); }
+  .tv-score-box { min-width: 1.7rem; font-size: clamp(1.2rem, 5vw, 2.6rem); }
+  .tv-scene__title { font-size: 1.3rem; padding: 0 1rem; }
+  .tv-standings { padding: 0 1rem; }
+  .tv-standings ol { font-size: 1.05rem; }
+  .tv-spareggio-alert { font-size: 1.05rem; margin: .8rem 1rem 0; padding: .7rem .9rem; }
+  .tv-trophy { font-size: 3.5rem; }
+  .tv-champion { font-size: clamp(1.8rem, 8vw, 5rem); }
+  .tv-podium { font-size: 1.15rem; gap: 1.2rem; }
+  .tv-ticker { padding: .45rem .8rem; }
+  .tv-ticker__item { font-size: .9rem; }
+}
 
 /* ============================================================
    Setup / gestione torneo
