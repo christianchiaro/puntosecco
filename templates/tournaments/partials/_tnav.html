@@ -7,21 +7,48 @@
   </div>
   <p class="t-header__meta">{{ t.date }} · {{ t.num_teams }} coppie · {{ t.num_courts }} campi</p>
   <nav class="tnav">
-    <a href="{% url 'tournaments:standings' slug=t.slug %}" class="{% if active == 'standings' %}is-active{% endif %}">Classifiche</a>
-    <a href="{% url 'tournaments:schedule' slug=t.slug %}" class="{% if active == 'schedule' %}is-active{% endif %}">Calendario</a>
-    <a href="{% url 'tournaments:brackets' slug=t.slug %}" class="{% if active == 'brackets' %}is-active{% endif %}">Tabelloni</a>
-    <a href="{% url 'tournaments:classifica' slug=t.slug %}" class="{% if active == 'classifica' %}is-active{% endif %}">Classifica finale</a>
-    <a href="{% url 'tournaments:live' slug=t.slug %}" class="{% if active == 'live' %}is-active{% endif %}">Live</a>
-    <a href="{% url 'tournaments:stats' slug=t.slug %}" class="{% if active == 'stats' %}is-active{% endif %}">Statistiche</a>
-    <a href="{% url 'tournaments:albo' slug=t.slug %}" class="{% if active == 'albo' %}is-active{% endif %}">Albo d'oro</a>
-    <a href="{% url 'tournaments:score_log' slug=t.slug %}" class="{% if active == 'score_log' %}is-active{% endif %}">Registro</a>
-    {% if t.status == 'setup' %}
-      <a href="{% url 'tournaments:register' slug=t.slug %}" class="{% if active == 'register' %}is-active{% endif %}">Iscrizione</a>
-    {% endif %}
+    <div class="tnav__track">
+      <span class="tnav__pill" aria-hidden="true"></span>
+      <a href="{% url 'tournaments:standings' slug=t.slug %}" class="{% if active == 'standings' %}is-active{% endif %}">Classifiche</a>
+      <a href="{% url 'tournaments:schedule' slug=t.slug %}" class="{% if active == 'schedule' %}is-active{% endif %}">Calendario</a>
+      <a href="{% url 'tournaments:brackets' slug=t.slug %}" class="{% if active == 'brackets' %}is-active{% endif %}">Tabelloni</a>
+      <a href="{% url 'tournaments:classifica' slug=t.slug %}" class="{% if active == 'classifica' %}is-active{% endif %}">Classifica finale</a>
+      <a href="{% url 'tournaments:live' slug=t.slug %}" class="{% if active == 'live' %}is-active{% endif %}">Live</a>
+      <a href="{% url 'tournaments:stats' slug=t.slug %}" class="{% if active == 'stats' %}is-active{% endif %}">Statistiche</a>
+      <a href="{% url 'tournaments:albo' slug=t.slug %}" class="{% if active == 'albo' %}is-active{% endif %}">Albo d'oro</a>
+      <a href="{% url 'tournaments:score_log' slug=t.slug %}" class="{% if active == 'score_log' %}is-active{% endif %}">Registro</a>
+      {% if t.status == 'setup' %}
+        <a href="{% url 'tournaments:register' slug=t.slug %}" class="{% if active == 'register' %}is-active{% endif %}">Iscrizione</a>
+      {% endif %}
+    </div>
     <a href="{% url 'tournaments:score_panel' slug=t.slug %}" class="tnav__staff {% if active == 'score_panel' %}is-active{% endif %}">Punteggi</a>
     {% if request.user.is_staff %}
       <a href="{% url 'tournaments:manage' slug=t.slug %}" class="tnav__staff {% if active == 'manage' %}is-active{% endif %}">Gestione</a>
     {% endif %}
   </nav>
+  <script>
+    (function () {
+      function positionTnavPill() {
+        var track = document.querySelector('.tnav__track');
+        var pill = track && track.querySelector('.tnav__pill');
+        var active = track && track.querySelector('a.is-active');
+        if (pill && active) {
+          pill.style.left = active.offsetLeft + 'px';
+          pill.style.width = active.offsetWidth + 'px';
+        }
+      }
+      positionTnavPill();
+      // Guardia su window: questo script viene ri-eseguito ad ogni boost (vedi base.html),
+      // quindi il listener di resize va registrato una volta sola per non accumularsi.
+      if (!window.__tnavPillResizeInit) {
+        window.__tnavPillResizeInit = true;
+        var resizeTimer;
+        window.addEventListener('resize', function () {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(positionTnavPill, 120);
+        });
+      }
+    })();
+  </script>
 </div>
 {% endwith %}
