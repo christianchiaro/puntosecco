@@ -28,18 +28,27 @@
   </nav>
   <script>
     (function () {
-      function positionTnavPill() {
+      function positionTnavPill(animate) {
         var track = document.querySelector('.tnav__track');
         var pill = track && track.querySelector('.tnav__pill');
         var active = track && track.querySelector('a.is-active');
         if (!pill || !active) return;
+        if (!animate) {
+          // Ogni pagina è un caricamento nuovo (nessuna posizione "precedente" reale da cui
+          // partire): il posizionamento iniziale scatta subito, senza animare dal default.
+          pill.style.transition = 'none';
+        }
         pill.style.left = active.offsetLeft + 'px';
         pill.style.width = active.offsetWidth + 'px';
+        if (!animate) {
+          void pill.offsetHeight; // forza il reflow prima di riattivare la transition
+          pill.style.transition = '';
+        }
         // Porta il tab attivo nell'area visibile dello scroll orizzontale (centrato).
         var target = active.offsetLeft - (track.clientWidth - active.offsetWidth) / 2;
         track.scrollLeft = Math.max(0, target);
       }
-      positionTnavPill();
+      positionTnavPill(false);
       // Guardia su window: questo script viene ri-eseguito ad ogni boost (vedi base.html),
       // quindi il listener di resize va registrato una volta sola per non accumularsi.
       if (!window.__tnavPillResizeInit) {
@@ -47,7 +56,7 @@
         var resizeTimer;
         window.addEventListener('resize', function () {
           clearTimeout(resizeTimer);
-          resizeTimer = setTimeout(positionTnavPill, 120);
+          resizeTimer = setTimeout(function () { positionTnavPill(true); }, 120);
         });
       }
     })();

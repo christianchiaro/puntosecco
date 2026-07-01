@@ -559,14 +559,14 @@ input[type="number"], input[type="text"], input[type="password"] {
     background: #16271f; border: 1px solid #2c3f25; border-radius: 999px; padding: 4px;
   }
   .tnav__track::-webkit-scrollbar { display: none; }
-  /* Nome di transizione dedicato: al posto di una CSS transition (che riparte sempre dal
-     default ad ogni pagina, quindi "scorre" solo verso destra), lascia che la View
-     Transitions API (già attiva per l'header, vedi .t-header) interpoli nativamente
-     dalla vecchia posizione della pillola alla nuova, nella direzione reale. */
+  /* Il posizionamento iniziale (ad ogni pagina) è istantaneo, gestito dallo script sotto
+     (che disattiva questa transition apposta, altrimenti animerebbe sempre dal default
+     invece che scattare subito). La transition resta attiva solo per il riposizionamento
+     su resize/rotazione, dove la pillola è lo stesso elemento e la direzione è sempre corretta. */
   .tnav__pill {
     display: block; position: absolute; top: 4px; left: 4px; width: 0;
     height: calc(100% - 8px); background: #eafff1; border-radius: 999px;
-    view-transition-name: tnav-pill;
+    transition: left .25s ease, width .25s ease;
   }
   .tnav__track a {
     position: relative; z-index: 1; flex: 0 0 auto; white-space: nowrap;
