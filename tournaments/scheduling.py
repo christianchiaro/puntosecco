@@ -4,8 +4,10 @@ Vincoli garantiti:
 - ogni coppia gioca tutte le altre del proprio girone una volta (girone all'italiana);
 - una coppia non gioca due partite nello stesso slot temporale;
 - un campo ospita una sola partita per slot;
-- le partite riempiono SEMPRE tutti i campi disponibili quando possibile (scheduling
-  greedy "primo slot libero", non a blocchi per turno - vedi generate_group_stage).
+- una coppia non gioca mai 3 (o piu') partite consecutive senza pausa, salvo quando
+  e' l'unica opzione per riempire un campo (vedi generate_group_stage);
+- le partite riempiono i campi disponibili quando possibile, compatibilmente col
+  vincolo sopra (scheduling greedy "primo slot libero", non a blocchi per turno).
 """
 
 import datetime
@@ -48,16 +50,18 @@ def generate_group_stage(tournament):
     """(Ri)genera le partite dei gironi. Idempotente: cancella le precedenti GROUP.
 
     Scheduling greedy "primo slot libero": ogni partita viene assegnata al primo slot
-    in cui entrambe le coppie sono libere, riempiendo sempre tutti i campi disponibili.
-    Con un numero di gironi che non divide esattamente i campi (es. 3 gironi x 2
-    partite/turno su 4 campi), un blocco "un turno = uno slot sincronizzato per tutti
-    i gironi" lascerebbe campi vuoti a ogni turno incompleto; questo approccio invece
-    non spreca mai un campo se esiste una partita valida per riempirlo.
-    Tra piu' partite pronte nello stesso slot, preferisce quelle la cui coppia non ha
-    gia' giocato nello slot immediatamente precedente (riduce, senza eliminarlo del
-    tutto, il rischio di due turni consecutivi senza pausa: con gironi che non sono
-    multiplo dei campi, alcuni turni di fila senza pausa sono matematicamente
-    inevitabili se si vogliono riempire sempre tutti i campi).
+    in cui entrambe le coppie sono libere, riempiendo tutti i campi disponibili quando
+    possibile. Con un numero di gironi che non divide esattamente i campi (es. 3 gironi
+    x 2 partite/turno su 4 campi), un blocco "un turno = uno slot sincronizzato per
+    tutti i gironi" lascerebbe campi vuoti a ogni turno incompleto; questo approccio
+    invece prova sempre a riempire un campo se esiste una partita valida per farlo.
+    Vincolo di fairness attivo: una coppia non gioca mai 3 (o piu') partite consecutive
+    senza pausa. Tra piu' partite pronte nello stesso slot, quelle che porterebbero una
+    coppia alla terza di fila vengono scartate a favore delle altre; se cosi' facendo
+    non ci sono abbastanza partite "sicure" per riempire tutti i campi dello slot, un
+    campo puo' restare temporaneamente vuoto anche a meta' calendario (non solo
+    all'ultimo slot) pur di rispettare il vincolo. La terza di fila viene accettata
+    solo quando e' l'unica opzione rimasta, cioe' nessuna partita pronta la evita.
 
     Ritorna il numero di slot temporali occupati dalla fase a gironi.
     """
@@ -96,6 +100,7 @@ def generate_group_stage(tournament):
 
     team_free_at = {}
     team_last_slot = {}
+    team_streak = {}
     new_matches = []
     slot = 0
     max_slot_used = -1
@@ -108,23 +113,52 @@ def generate_group_stage(tournament):
         if not ready:
             slot += 1
             continue
+
+        def extends_to_three(tid):
+            return team_last_slot.get(tid) == slot - 1 and team_streak.get(tid, 0) >= 2
+
+        def match_is_unsafe(i):
+            _, _, a, b = pending[i]
+            return extends_to_three(a) or extends_to_three(b)
+
         ready.sort(
             key=lambda i: (
+                match_is_unsafe(i),
                 team_last_slot.get(pending[i][2]) == slot - 1
                 or team_last_slot.get(pending[i][3]) == slot - 1,
                 i,
             )
         )
-        chosen, used_teams = [], set()
+        chosen, used_teams, chosen_idx = [], set(), set()
+        # Prima passata: solo partite "sicure" (non porterebbero una coppia alla
+        # terza partita consecutiva senza pausa).
         for i in ready:
             if len(chosen) >= num_courts:
                 break
+            if match_is_unsafe(i):
+                continue
             _, _, a, b = pending[i]
             if a in used_teams or b in used_teams:
                 continue  # eviterebbe una coppia impegnata due volte nello stesso slot
             chosen.append(i)
+            chosen_idx.add(i)
             used_teams.add(a)
             used_teams.add(b)
+        # Seconda passata: se i campi non sono tutti riempiti dalle partite sicure,
+        # la terza di fila e' inevitabile per mancanza di alternative - accettala.
+        if len(chosen) < num_courts:
+            for i in ready:
+                if len(chosen) >= num_courts:
+                    break
+                if i in chosen_idx:
+                    continue
+                _, _, a, b = pending[i]
+                if a in used_teams or b in used_teams:
+                    continue
+                chosen.append(i)
+                chosen_idx.add(i)
+                used_teams.add(a)
+                used_teams.add(b)
         if not chosen:
             slot += 1
             continue
@@ -143,6 +177,11 @@ def generate_group_stage(tournament):
                     team_b_id=b,
                 )
             )
+            for tid in (a, b):
+                if team_last_slot.get(tid) == slot - 1:
+                    team_streak[tid] = team_streak.get(tid, 1) + 1
+                else:
+                    team_streak[tid] = 1
             team_free_at[a] = team_free_at[b] = slot + 1
             team_last_slot[a] = team_last_slot[b] = slot
         max_slot_used = max(max_slot_used, slot)

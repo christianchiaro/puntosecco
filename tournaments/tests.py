@@ -300,8 +300,10 @@ class GroupScheduleCourtPackingTest(TestCase):
 
     Regressione: il vecchio scheduler bloccava tutti i gironi su turni globali
     sincronizzati e lasciava 2 campi vuoti ad ogni turno incompleto. Lo scheduler
-    greedy "primo slot libero" deve riempire sempre tutti i campi tranne, al piu',
-    l'ultimo slot (inevitabile: 18 partite non e' multiplo di 4 campi)."""
+    greedy "primo slot libero" riempie i campi quando possibile, ma non a costo di
+    far giocare una coppia per 3 (o piu') partite consecutive senza pausa: puo'
+    lasciare un campo vuoto anche a meta' calendario, non solo all'ultimo slot,
+    pur di rispettare quel vincolo."""
 
     def setUp(self):
         self.t = make_3group_tournament()
@@ -312,14 +314,20 @@ class GroupScheduleCourtPackingTest(TestCase):
         # 18 partite / 4 campi = 4.5 -> minimo teorico 5 slot (non piu' 6).
         self.assertEqual(self.slots_used, 5)
 
-    def test_no_empty_courts_except_last_slot(self):
-        per_slot = {}
+    def test_no_team_plays_three_consecutive_slots(self):
+        slots_by_team = {}
         for m in self.matches:
-            per_slot[m.slot_index] = per_slot.get(m.slot_index, 0) + 1
-        for slot, count in per_slot.items():
-            if slot < self.slots_used - 1:
-                self.assertEqual(
-                    count, 4, f"Slot {slot} ha campi vuoti: {count}/4 partite"
+            for tid in (m.team_a_id, m.team_b_id):
+                slots_by_team.setdefault(tid, []).append(m.slot_index)
+        for tid, slots in slots_by_team.items():
+            slots.sort()
+            streak = 1
+            for prev, curr in zip(slots, slots[1:]):
+                streak = streak + 1 if curr == prev + 1 else 1
+                self.assertLess(
+                    streak,
+                    3,
+                    f"Coppia {tid} gioca {streak} partite di fila (slot {slots})",
                 )
 
     def test_no_team_double_booked_in_a_slot(self):
