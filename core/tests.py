@@ -52,6 +52,30 @@ class AboutViewTests(TestCase):
         resp = self.client.get(reverse("core:about"))
         self.assertContains(resp, "Chi siamo")
 
+    def test_about_mentions_second_edition(self):
+        # Racconta la crescita del torneo: siamo alla seconda edizione.
+        resp = self.client.get(reverse("core:about"))
+        self.assertContains(resp, "seconda edizione")
+
+    def test_about_gallery_has_eight_items(self):
+        resp = self.client.get(reverse("core:about"))
+        self.assertEqual(resp.content.decode().count("gallery__item"), 8)
+
+    def test_about_gallery_contains_all_eight_images(self):
+        resp = self.client.get(reverse("core:about"))
+        image_names = [
+            "gruppo-fondatori.jpg",
+            "premiazione.jpg",
+            "amici-in-campo.jpg",
+            "locandina-no-rules.jpg",
+            "locandina-own-the-court.jpg",
+            "locandina-no-second-chances.jpg",
+            "locandina-one-tournament.jpg",
+            "locandina-one-point-all-in.jpg",
+        ]
+        for name in image_names:
+            self.assertContains(resp, f"/static/img/chi-siamo/{name}")
+
 
 class RegolamentoViewTests(TestCase):
     def test_regolamento_returns_200_and_uses_template(self):

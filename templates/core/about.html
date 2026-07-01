@@ -1,8 +1,50 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Chi siamo - Punto Secco{% endblock %}
+{% block meta_description %}Chi siamo: la storia di Punto Secco, il torneo di padel nato da un gruppo di amici, oggi alla seconda edizione.{% endblock %}
 
 {% block content %}
   <h1>Chi siamo</h1>
-  <p>Pagina raggiunta via navigazione hx-boost: stesso DOM dell'apertura diretta.</p>
+
+  <p>Punto Secco nasce da un problema che chiunque giochi a padel conosce bene: trovare quattro persone libere, nello stesso giorno, alla stessa ora, non è mai scontato. Siamo un gruppo di amici che ci ha sbattuto la testa per anni - campi prenotati e disdetti all'ultimo, chat piene di &quot;io forse ci sono&quot; senza che il forse diventasse mai un sì.</p>
+
+  <p>Invece di continuare a rincorrere gli avversari, abbiamo deciso di organizzarci da soli: un torneo vero, con gironi, tabelloni e una regola tutta nostra - il Punto Secco, un solo punto secco al posto del tie-break, che dà il nome a tutto il progetto. La prima edizione è nata più che altro per gioco, tra noi e qualche amico degli amici.</p>
+
+  <p>Siamo già alla seconda edizione, e cresce ogni volta un po' di più: più coppie iscritte, più partite, più gente che chiede quando si gioca la prossima. Quello che è iniziato come un modo per non restare senza avversari è diventato l'appuntamento che aspettiamo tutto l'anno.</p>
+
+  <div class="gallery">
+    <figure class="gallery__item">
+      <img src="{% static 'img/chi-siamo/gruppo-fondatori.jpg' %}" alt="Foto di gruppo del team di Punto Secco a bordo campo, medaglie al collo." loading="lazy">
+      <figcaption>Il gruppo che ha messo in piedi tutto questo, foto a fine giornata.</figcaption>
+    </figure>
+    <figure class="gallery__item">
+      <img src="{% static 'img/chi-siamo/premiazione.jpg' %}" alt="Un giocatore solleva la coppa e morde la medaglia della premiazione." loading="lazy">
+      <figcaption>Morso alla medaglia, rito ormai fisso a fine torneo.</figcaption>
+    </figure>
+    <figure class="gallery__item">
+      <img src="{% static 'img/chi-siamo/amici-in-campo.jpg' %}" alt="Un giocatore in maglietta Punto Secco a bordo campo tra una partita e l'altra." loading="lazy">
+      <figcaption>Tra una partita e l'altra, sempre in compagnia.</figcaption>
+    </figure>
+    <figure class="gallery__item">
+      <img src="{% static 'img/chi-siamo/locandina-no-rules.jpg' %}" alt="Locandina promozionale Punto Secco Second Edition 2026 con un giocatore in azione sul campo." loading="lazy">
+      <figcaption>La grafica ufficiale della seconda edizione: via il tie-break, conta solo il punto secco.</figcaption>
+    </figure>
+    <figure class="gallery__item">
+      <img src="{% static 'img/chi-siamo/locandina-own-the-court.jpg' %}" alt="Locandina promozionale Punto Secco Second Edition 2026 con una giocatrice in azione sul campo." loading="lazy">
+      <figcaption>Punto Secco Second Edition 2026 - la campagna con cui abbiamo lanciato quest'anno.</figcaption>
+    </figure>
+    <figure class="gallery__item">
+      <img src="{% static 'img/chi-siamo/locandina-no-second-chances.jpg' %}" alt="Locandina promozionale Punto Secco Second Edition 2026 con una giocatrice in azione sul campo." loading="lazy">
+      <figcaption>Un punto decide tutto: lo slogan che riassume la nostra specialità.</figcaption>
+    </figure>
+    <figure class="gallery__item">
+      <img src="{% static 'img/chi-siamo/locandina-one-tournament.jpg' %}" alt="Locandina promozionale Punto Secco Second Edition 2026 con un giocatore in azione sul campo." loading="lazy">
+      <figcaption>Un torneo, senza seconde occasioni: solo chi non sbaglia il punto giusto fa la storia.</figcaption>
+    </figure>
+    <figure class="gallery__item">
+      <img src="{% static 'img/chi-siamo/locandina-one-point-all-in.jpg' %}" alt="Locandina promozionale Punto Secco Second Edition 2026 con un giocatore in azione sul campo." loading="lazy">
+      <figcaption>Un punto, tutto dentro: lo spirito con cui scendiamo in campo ogni volta.</figcaption>
+    </figure>
+  </div>
 {% endblock %}

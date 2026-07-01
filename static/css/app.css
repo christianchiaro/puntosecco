@@ -162,6 +162,12 @@ button.ghost, .btn.ghost { background: transparent; color: var(--primary-ink); b
 .champion-banner__trophy { font-size: 1.7rem; }
 .champion-banner__cta { margin-left: auto; color: var(--primary-ink); font-size: .85rem; white-space: nowrap; }
 
+/* Galleria fotografica (pagina Chi siamo) */
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .8rem; margin: 1.5rem 0; }
+.gallery__item { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.gallery__item img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+.gallery__item figcaption { padding: .7rem .9rem; color: var(--muted); font-size: .85rem; }
+
 /* Podio */
 .podium-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
 .podium { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; box-shadow: var(--shadow); }
@@ -581,6 +587,10 @@ input[type="number"], input[type="text"], input[type="password"] {
   .cards { gap: 1rem; margin: 1.25rem 0 1.9rem; }
   .card { padding: 1.35rem 1.25rem; }
   .tournament-card { gap: .45rem; padding: 1.35rem 1.25rem; }
+
+  /* Galleria (Chi siamo) */
+  .gallery { gap: 1rem; margin: 1.9rem 0; }
+  .gallery__item figcaption { padding: .8rem .95rem; }
 
   /* Classifiche: righe alte e ariose; nome coppia sempre su una riga (troncato), mai a capo. */
   .groups-grid { gap: 1.4rem; }
