@@ -89,8 +89,13 @@ def render_bracket_svg(rounds, third_place=None):
     ncol = len(rounds)
     width = PAD * 2 + ncol * BOX_W + (ncol - 1) * COL_GAP
     height = PAD + LABEL_H + n0 * pitch
+    tp_cy = None
     if third_place:
-        height += LABEL_H + BOX_H + V_GAP
+        tp_cy = centers[-1][0] + BOX_H + LABEL_H + V_GAP
+        # Il box 3°/4° può ricadere già dentro il canvas esistente (bracket piccoli,
+        # dove il centro della finale è vicino al centro verticale): estendo il
+        # canvas solo se serve davvero, altrimenti resta spazio vuoto in fondo.
+        height = max(height, tp_cy + BOX_H / 2 + PAD)
 
     def x_of(r):
         return PAD + r * (BOX_W + COL_GAP)
@@ -121,8 +126,6 @@ def render_bracket_svg(rounds, third_place=None):
             _draw_box(p, xr, centers[r][i], f'{rnd["abbr"]} · Game {i + 1}', m)
 
     if third_place:
-        final_cy = centers[-1][0]
-        tp_cy = final_cy + BOX_H + LABEL_H + V_GAP
         _draw_box(p, x_of(ncol - 1), tp_cy, "Finale 3°/4°", third_place)
 
     p.append("</svg>")
