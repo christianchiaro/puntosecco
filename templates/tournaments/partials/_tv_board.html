@@ -6,13 +6,33 @@
         <div class="tv-cell {% if cell.live %}tv-cell--live{% endif %}">
           <div class="tv-court">{{ cell.court }}</div>
           {% if cell.live %}
-            <div class="tv-match">
-              <div class="tv-team {% if cell.live.winner_id and cell.live.winner_id == cell.live.team_a_id %}is-win{% endif %}">{{ cell.live.team_a.name|default:"-" }}</div>
-              <div class="tv-team {% if cell.live.winner_id and cell.live.winner_id == cell.live.team_b_id %}is-win{% endif %}">{{ cell.live.team_b.name|default:"-" }}</div>
-            </div>
-            {% if cell.live.score_display %}
-              <div class="tv-score">{{ cell.live.score_display }}</div>
+            {% if cell.live.sets.all %}
+              {# Punteggio stile tennis: nome a sinistra, un box per set a destra. #}
+              <div class="tv-score-table">
+                <div class="tv-score-row {% if cell.live.winner_id and cell.live.winner_id == cell.live.team_a_id %}is-win{% endif %}">
+                  <span class="tv-score-name">{{ cell.live.team_a.name|default:"-" }}</span>
+                  <span class="tv-score-boxes">
+                    {% for s in cell.live.sets.all %}<span class="tv-score-box">{{ s.games_a }}</span>{% endfor %}
+                  </span>
+                </div>
+                <div class="tv-score-row {% if cell.live.winner_id and cell.live.winner_id == cell.live.team_b_id %}is-win{% endif %}">
+                  <span class="tv-score-name">{{ cell.live.team_b.name|default:"-" }}</span>
+                  <span class="tv-score-boxes">
+                    {% for s in cell.live.sets.all %}<span class="tv-score-box">{{ s.games_b }}</span>{% endfor %}
+                  </span>
+                </div>
+              </div>
+            {% elif cell.live.walkover %}
+              <div class="tv-score-table">
+                <div class="tv-score-row {% if cell.live.winner_id == cell.live.team_a_id %}is-win{% endif %}"><span class="tv-score-name">{{ cell.live.team_a.name|default:"-" }}</span></div>
+                <div class="tv-score-row {% if cell.live.winner_id == cell.live.team_b_id %}is-win{% endif %}"><span class="tv-score-name">{{ cell.live.team_b.name|default:"-" }}</span></div>
+              </div>
+              <div class="tv-score tv-score--empty">W.O.</div>
             {% else %}
+              <div class="tv-match">
+                <div class="tv-team">{{ cell.live.team_a.name|default:"-" }}</div>
+                <div class="tv-team">{{ cell.live.team_b.name|default:"-" }}</div>
+              </div>
               <div class="tv-score tv-score--empty">in gioco</div>
             {% endif %}
             <div class="tv-tag tv-tag--live">● IN CORSO · {{ cell.live.round_label }}</div>

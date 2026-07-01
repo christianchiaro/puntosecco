@@ -199,6 +199,14 @@ body.tv { margin: 0; background: #0b1714; color: #eafff7; }
 .tv-next .tv-team { font-size: clamp(1.3rem, 3vw, 2.1rem); color: #b9d2ca; font-weight: 700; }
 .tv-free { font-size: 2rem; color: #5f7c72; }
 
+/* Punteggio stile tennis: nome a sinistra, un box per set a destra, righe allineate. */
+.tv-score-table { display: flex; flex-direction: column; gap: .35rem; }
+.tv-score-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.tv-score-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(1.6rem, 3.6vw, 2.7rem); font-weight: 800; line-height: 1.15; flex: 1; }
+.tv-score-row.is-win .tv-score-name, .tv-score-row.is-win .tv-score-box { color: #9bcd91; }
+.tv-score-boxes { display: flex; gap: .35rem; flex: none; }
+.tv-score-box { min-width: 2.1rem; text-align: center; font-size: clamp(1.6rem, 3.6vw, 2.6rem); font-weight: 800; font-variant-numeric: tabular-nums; background: rgba(255,255,255,.07); border: 1px solid #2f5145; border-radius: .35rem; padding: .05rem .3rem; }
+
 /* Scene TV rotanti + ticker */
 body.tv main { padding-bottom: 4rem; }
 .tv-scene { display: none; }
