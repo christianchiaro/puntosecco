@@ -19,6 +19,7 @@ WIN = "#9bcd91"
 MUTE = "#9fb39a"
 LINE = "#3c5232"
 BOXBG = "#172414"
+SET_GAP = 22
 FONT = "system-ui,-apple-system,sans-serif"
 
 
@@ -44,11 +45,17 @@ def _draw_box(p, x, cy, label, match):
         f'<line x1="{x:.0f}" y1="{top + ROW_H:.0f}" x2="{x + BOX_W:.0f}" '
         f'y2="{top + ROW_H:.0f}" stroke="{LINE}"/>'
     )
+    # Punteggio set per set (anche a partita IN CORSO, non solo a fine match): un
+    # set ancora in gioco (es. "3-2") non ha un vincitore deciso, quindi NON va
+    # contato come "set vinto" - mostrare direttamente i game evita di dichiarare
+    # un vincitore prematuro che potrebbe ribaltarsi.
+    sets = list(match.sets.all())
+    n_sets = len(sets)
     rows = [
-        (match.team_a, match.team_a_id, match.sets_a),
-        (match.team_b, match.team_b_id, match.sets_b),
+        (match.team_a, match.team_a_id, "games_a"),
+        (match.team_b, match.team_b_id, "games_b"),
     ]
-    for ri, (team, tid, sets) in enumerate(rows):
+    for ri, (team, tid, games_attr) in enumerate(rows):
         ty = top + ri * ROW_H + ROW_H / 2 + 6
         win = match.is_played and match.winner_id == tid
         color = WIN if win else INK
@@ -57,10 +64,12 @@ def _draw_box(p, x, cy, label, match):
             f'<text x="{x + 14:.0f}" y="{ty:.0f}" fill="{color}" font-size="17" '
             f'font-weight="{weight}" font-family="{FONT}">{_name(team)}</text>'
         )
-        if match.is_played:
+        for si, s in enumerate(sets):
+            sx = x + BOX_W - 14 - (n_sets - 1 - si) * SET_GAP
             p.append(
-                f'<text x="{x + BOX_W - 14:.0f}" y="{ty:.0f}" fill="{color}" font-size="17" '
-                f'font-weight="{weight}" text-anchor="end" font-family="{FONT}">{sets}</text>'
+                f'<text x="{sx:.0f}" y="{ty:.0f}" fill="{color}" font-size="17" '
+                f'font-weight="{weight}" text-anchor="middle" font-family="{FONT}">'
+                f"{getattr(s, games_attr)}</text>"
             )
 
 
