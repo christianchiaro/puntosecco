@@ -32,10 +32,12 @@
         var track = document.querySelector('.tnav__track');
         var pill = track && track.querySelector('.tnav__pill');
         var active = track && track.querySelector('a.is-active');
-        if (pill && active) {
-          pill.style.left = active.offsetLeft + 'px';
-          pill.style.width = active.offsetWidth + 'px';
-        }
+        if (!pill || !active) return;
+        pill.style.left = active.offsetLeft + 'px';
+        pill.style.width = active.offsetWidth + 'px';
+        // Porta il tab attivo nell'area visibile dello scroll orizzontale (centrato).
+        var target = active.offsetLeft - (track.clientWidth - active.offsetWidth) / 2;
+        track.scrollLeft = Math.max(0, target);
       }
       positionTnavPill();
       // Guardia su window: questo script viene ri-eseguito ad ogni boost (vedi base.html),
