@@ -162,12 +162,14 @@ class MatchScoreTests(TestCase):
         self.assertTrue(m.is_played)
         self.assertEqual(m.sets_won, (1, 0))
 
-    def test_set_with_tiebreak_display_and_winner(self):
+    def test_set_with_punto_secco_display_and_winner(self):
+        # Punto Secco: sul 6-6 un solo punto decide il set (non un tie-break a punti).
+        # tiebreak_a/b valgono 1 (vince) / 0 (perde), non un punteggio reale.
         m = self._match()
         record_match_score(
-            m, [{"games_a": 7, "games_b": 6, "tiebreak_a": 7, "tiebreak_b": 5}]
+            m, [{"games_a": 7, "games_b": 6, "tiebreak_a": 1, "tiebreak_b": 0}]
         )
-        self.assertEqual(m.score_display, "7-6 (7-5)")
+        self.assertEqual(m.score_display, "7-6 (PS)")
         self.assertEqual(m.winner, self.a)
 
     def test_knockout_two_sets_straight(self):
@@ -790,6 +792,19 @@ class ScoringViewTests(TestCase):
         self.assertContains(resp, "vincitore")  # messaggio d'errore
         m.refresh_from_db()
         self.assertFalse(m.is_played)
+
+    def test_post_punto_secco_decides_set(self):
+        # 7-6 senza indicare chi vince il Punto Secco: il punteggio (7>6) basta gia'
+        # a decidere il set, ma verifichiamo che passare set1_ps lo registri (PS).
+        m = self.t.matches.filter(phase=Match.Phase.GROUP).first()
+        resp = self.client.post(
+            self.match_url(m), {"set1_a": "7", "set1_b": "6", "set1_ps": "a"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        m.refresh_from_db()
+        self.assertTrue(m.is_played)
+        self.assertEqual(m.winner_id, m.team_a_id)
+        self.assertEqual(m.score_display, "7-6 (PS)")
 
     def test_post_knockout_two_zero_advances_winner(self):
         play_all_groups_by_seed(self.t)

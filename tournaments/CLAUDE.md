@@ -4,7 +4,7 @@ Caricate solo quando si lavora qui. Sono le regole di dominio di Punto Secco.
 
 ## Formato (default, parametrico nel modello `Tournament`)
 - **12 coppie, 3 gironi (A-C) da 4**, 4 campi, slot da 25 min.
-- **Gironi**: girone all'italiana → 6 partite/girone, 18 totali. Partita = **1 set** con tie-break. `slot_span=1`.
+- **Gironi**: girone all'italiana → 6 partite/girone, 18 totali. Partita = **1 set**; sul 6-6 si gioca il **Punto Secco** (un solo punto, non un tie-break a punti - è la specialità del torneo). `slot_span=1`.
 - **Knockout gold (8 squadre)**: prime 2 di ogni girone + 2 migliori terze (wild card) → quarti → semifinali → finale + 3°/4°. I **perdenti dei quarti** giocano la **consolazione 5°-8°** (2 semifinali → finale 5°/6° + 7°/8°), così tutte le 8 coppie hanno un piazzamento univoco.
 - **Knockout silver (4 squadre)**: peggior terza + 3 quarte → semifinali → finale + 3°/4° (niente quarti, niente consolazione).
 - Partita knockout = **2 set + super tie-break a 10 se 1-1**. `slot_span=2` (occupa 2 slot).
@@ -21,7 +21,10 @@ Slot assegnati dinamicamente da `schedule_knockout`. Per il formato a 12: gironi
 
 ## Punteggio (`scoring.py`, modello `MatchSet`)
 - Il punteggio vive nei `MatchSet` figli (1 per i gironi, fino a 3 nel knockout; il 3° è il super TB, con i punti in `games_*`).
-- Vincitore set: più game; a parità decide il tie-break. Vincitore partita: più set vinti.
+- Vincitore set: più game; a parità (6-6) decide il **Punto Secco** - un punto secco, non un tie-break
+  tradizionale. `tiebreak_a`/`tiebreak_b` valgono 1 (vince)/0 (perde), non un punteggio reale; form:
+  `set{i}_ps` = "a"/"b". Display: `MatchSet.display` mostra `"7-6 (PS)"`, mai un finto punteggio.
+  Vincitore partita: più set vinti.
 - `record_match_score(match, sets)` è l'unica via per registrare un risultato (crea i set, calcola il vincitore, segna DONE).
 
 ## Classifica girone - tiebreaker (in ordine)

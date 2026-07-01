@@ -240,7 +240,9 @@ class MatchSet(models.Model):
     number = models.PositiveSmallIntegerField()  # 1, 2, 3 (3 = super tie-break)
     games_a = models.PositiveSmallIntegerField()
     games_b = models.PositiveSmallIntegerField()
-    # Punti del tie-break di set (es. 7-6 → tiebreak 7-5). Null se il set non è andato al TB.
+    # Punto Secco (la specialità del torneo): sul 6-6 si gioca UN solo punto secco a
+    # decidere il set, non un tie-break tradizionale. 1 alla coppia che lo vince, 0
+    # all'altra; null se il set non è arrivato al Punto Secco (deciso nei game).
     tiebreak_a = models.PositiveSmallIntegerField(null=True, blank=True)
     tiebreak_b = models.PositiveSmallIntegerField(null=True, blank=True)
 
@@ -257,7 +259,7 @@ class MatchSet(models.Model):
             return "a"
         if self.games_b > self.games_a:
             return "b"
-        # Parità di game: decide il tie-break, se presente.
+        # Parità di game: decide il Punto Secco, se presente.
         if self.tiebreak_a is not None and self.tiebreak_b is not None:
             if self.tiebreak_a > self.tiebreak_b:
                 return "a"
@@ -269,7 +271,7 @@ class MatchSet(models.Model):
     def display(self):
         s = f"{self.games_a}-{self.games_b}"
         if self.tiebreak_a is not None and self.tiebreak_b is not None:
-            s += f" ({self.tiebreak_a}-{self.tiebreak_b})"
+            s += " (PS)"  # deciso al Punto Secco, non un tie-break a punti
         return s
 
 

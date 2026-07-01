@@ -13,10 +13,14 @@ class HomeViewTests(TestCase):
         self.assertTemplateUsed(resp, "core/home.html")
 
     def test_home_lists_tournaments_with_links(self):
-        t = Tournament.objects.create(name="Coppa Test", slug="coppa-test", date=datetime.date(2026, 7, 1))
+        t = Tournament.objects.create(
+            name="Coppa Test", slug="coppa-test", date=datetime.date(2026, 7, 1)
+        )
         resp = self.client.get(reverse("core:home"))
         self.assertContains(resp, "Coppa Test")
-        self.assertContains(resp, reverse("tournaments:dashboard", kwargs={"slug": t.slug}))
+        self.assertContains(
+            resp, reverse("tournaments:dashboard", kwargs={"slug": t.slug})
+        )
 
     def test_home_without_tournaments_shows_placeholder(self):
         resp = self.client.get(reverse("core:home"))
@@ -47,6 +51,28 @@ class AboutViewTests(TestCase):
     def test_about_contains_heading(self):
         resp = self.client.get(reverse("core:about"))
         self.assertContains(resp, "Chi siamo")
+
+
+class RegolamentoViewTests(TestCase):
+    def test_regolamento_returns_200_and_uses_template(self):
+        resp = self.client.get(reverse("core:regolamento"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTemplateUsed(resp, "core/regolamento.html")
+
+    def test_regolamento_mentions_punto_secco_rule(self):
+        # La specialità del torneo: punto secco al posto del tie-break sul 6-6.
+        resp = self.client.get(reverse("core:regolamento"))
+        self.assertContains(resp, "Punto Secco")
+        self.assertContains(resp, "6-6")
+
+    def test_regolamento_super_tiebreak_unchanged(self):
+        # Il super tie-break (3° set knockout) resta un tie-break a punti, non il PS.
+        resp = self.client.get(reverse("core:regolamento"))
+        self.assertContains(resp, "super tie-break ai 10 punti")
+
+    def test_regolamento_linked_from_nav(self):
+        resp = self.client.get(reverse("core:home"))
+        self.assertContains(resp, reverse("core:regolamento"))
 
 
 class OrarioPartialTests(TestCase):

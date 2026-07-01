@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Regolamento - Punto Secco{% endblock %}
+{% block meta_description %}Regolamento del torneo Punto Secco: formato, punteggio, Punto Secco al posto del tie-break, passaggio ai tabelloni gold e silver.{% endblock %}
+
+{% block content %}
+  <h1>Regolamento Punto Secco</h1>
+
+  <h2>Formato del torneo</h2>
+  <ul>
+    <li><strong>12 coppie</strong>, divise in <strong>3 gironi da 4</strong> (Girone A, B, C).</li>
+    <li>Ogni girone gioca <strong>all'italiana</strong>: ogni coppia affronta tutte le altre del proprio girone una volta (3 partite a testa).</li>
+  </ul>
+
+  <h2>Partite di girone</h2>
+  <ul>
+    <li>Si gioca <strong>1 set</strong>.</li>
+    <li>Il set si vince a <strong>6 giochi</strong> (con almeno 2 di scarto: 6-0, 6-1, 6-2, 6-3, 6-4) oppure <strong>7-5</strong>.</li>
+    <li>Sul <strong>6-6</strong> si gioca il <strong>Punto Secco</strong>: <em>un solo punto</em> che decide il set - non un tie-break tradizionale a più punti. È la specialità che dà il nome al torneo. Il set si chiude comunque <strong>7-6</strong>.</li>
+    <li>Vince la partita chi vince il set (essendo una sola partita a set unico, non serve altro).</li>
+  </ul>
+
+  <h3>Classifica di girone</h3>
+  <p>In caso di parità, i criteri si applicano <strong>in quest'ordine</strong>:</p>
+  <ol>
+    <li>numero di vittorie</li>
+    <li>scontro diretto (tra le coppie in parità)</li>
+    <li>differenza game (fatti - subiti)</li>
+    <li>game fatti</li>
+  </ol>
+
+  <h2>Passaggio ai tabelloni</h2>
+  <ul>
+    <li>Le prime <strong>2 di ogni girone</strong> (6 coppie) accedono direttamente al <strong>tabellone Gold</strong>.</li>
+    <li>Le <strong>2 migliori terze classificate</strong> dei 3 gironi (wild card) completano il Gold, che arriva così a <strong>8 coppie</strong>.</li>
+    <li>Le <strong>4 coppie restanti</strong> (la terza rimasta fuori + le tre quarte classificate) formano il <strong>tabellone Silver</strong> (4 coppie).</li>
+  </ul>
+  <p><strong>Criteri per le wild card</strong> (le 2 migliori terze), in ordine: vittorie → differenza game → game fatti. In caso di parità assoluta su tutti questi criteri, lo staff assegna uno <strong>spareggio</strong> tra le coppie interessate per decidere chi va al Gold.</p>
+
+  <h2>Partite dei tabelloni (eliminazione diretta)</h2>
+  <ul>
+    <li>Si gioca <strong>al meglio dei 3 set</strong>: chi vince <strong>2 set</strong> si aggiudica la partita.</li>
+    <li>Il 1° e 2° set seguono le stesse regole del girone (6 giochi/vantaggio 2, <strong>Punto Secco</strong> sul 6-6).</li>
+    <li>Se si arriva <strong>1 set pari</strong>, il 3° set è sostituito da un <strong>super tie-break ai 10 punti</strong> (con almeno 2 di scarto), che decide la partita. Il super tie-break resta un tie-break tradizionale a punti: è una regola diversa dal Punto Secco, riservata a questa situazione.</li>
+  </ul>
+
+  <h2>Struttura dei tabelloni</h2>
+  <p><strong>Gold (8 coppie):</strong> Quarti → Semifinali → Finalissima (1°/2° posto) + Finale 3°/4° posto tra le semifinaliste sconfitte.
+  Le <strong>4 coppie eliminate ai quarti</strong> disputano inoltre un mini-tabellone di <strong>consolazione per il 5°-8° posto</strong> (2 semifinali → finale 5°/6° e finale 7°/8°), così <strong>tutte le 8 coppie del Gold ottengono un piazzamento finale da 1° a 8°</strong>.</p>
+  <p><strong>Silver (4 coppie):</strong> Semifinali → Finalissima (1°/2° posto) + Finale 3°/4° posto. Tutte e 4 le coppie ottengono quindi un piazzamento da 1° a 4°.</p>
+
+  <h2>Classifica finale</h2>
+  <p>Il torneo produce <strong>due classifiche separate</strong>: <strong>Gold (1°-8° posto)</strong> e <strong>Silver (1°-4° posto)</strong>. Non esiste una classifica unica che mescola le coppie dei due tabelloni.</p>
+
+  <h2>Norme generali</h2>
+  <ul>
+    <li><strong>Vittoria a tavolino (walkover):</strong> se una coppia non può scendere in campo (es. infortunio, ritiro), l'avversaria viene dichiarata vincitrice senza giocare set.</li>
+    <li><strong>Punteggio pubblico:</strong> i risultati possono essere inseriti da chiunque sia a bordo campo (staff o giocatori), tramite il sito; ogni inserimento è comunque tracciato per garantire trasparenza.</li>
+    <li><strong>Correzioni:</strong> se un risultato viene corretto dopo essere stato inserito per errore, le eventuali partite successive del tabellone che dipendevano da quel risultato vengono riaggiornate automaticamente.</li>
+  </ul>
+  <p class="muted">Il programma e i gironi sorteggiati, con campi e orari di ogni partita, sono pubblicati nel <a href="{% url 'core:home' %}">calendario del sito del torneo</a>.</p>
+{% endblock %}

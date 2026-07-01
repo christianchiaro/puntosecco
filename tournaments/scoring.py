@@ -36,7 +36,9 @@ def _validate_set_format(i, ga, gb, is_super_tb):
 def sets_from_post(match, post, partial=False):
     """Costruisce e valida la lista di set dai dati del form (`request.POST`).
 
-    Campi attesi: set{i}_a, set{i}_b, set{i}_ta, set{i}_tb (i = 1..3).
+    Campi attesi: set{i}_a, set{i}_b, set{i}_ps (i = 1..3). `set{i}_ps` vale "a" o "b":
+    chi ha vinto il Punto Secco (il punto secco che decide il set sul 6-6, al posto
+    del tie-break tradizionale - è la specialità del torneo).
     Con `partial=True` (punteggio in corso) NON si pretende un vincitore di set né
     la decisività del match: si accetta un set ancora in gioco (es. 3-2).
     Solleva ValueError con messaggio leggibile se il punteggio non è valido.
@@ -57,14 +59,15 @@ def sets_from_post(match, post, partial=False):
         if ga < 0 or gb < 0:
             raise ValueError(f"Set {i}: i punteggi non possono essere negativi.")
 
-        raw_ta = (post.get(f"set{i}_ta") or "").strip()
-        raw_tb = (post.get(f"set{i}_tb") or "").strip()
-        ta = int(raw_ta) if raw_ta else None
-        tb = int(raw_tb) if raw_tb else None
+        ps = (post.get(f"set{i}_ps") or "").strip()  # "a" | "b" | ""
+        ta = 1 if ps == "a" else (0 if ps == "b" else None)
+        tb = 0 if ps == "a" else (1 if ps == "b" else None)
 
         if not partial:
             if set_winner_side(ga, gb, ta, tb) is None:
-                raise ValueError(f"Set {i}: deve esserci un vincitore (a parità di game serve il tie-break).")
+                raise ValueError(
+                    f"Set {i}: deve esserci un vincitore (a parità di game serve il Punto Secco)."
+                )
             _validate_set_format(i, ga, gb, is_super_tb=(match.is_knockout and i == 3))
         sets.append({"games_a": ga, "games_b": gb, "tiebreak_a": ta, "tiebreak_b": tb})
 
@@ -72,10 +75,19 @@ def sets_from_post(match, post, partial=False):
         raise ValueError("Inserisci almeno un set.")
 
     if not partial and match.is_knockout:
-        a = sum(1 for s in sets if set_winner_side(s["games_a"], s["games_b"], s["tiebreak_a"], s["tiebreak_b"]) == "a")
+        a = sum(
+            1
+            for s in sets
+            if set_winner_side(
+                s["games_a"], s["games_b"], s["tiebreak_a"], s["tiebreak_b"]
+            )
+            == "a"
+        )
         b = len(sets) - a
         if max(a, b) < 2:
-            raise ValueError("Servono 2 set vinti: se è 1-1 inserisci il super tie-break.")
+            raise ValueError(
+                "Servono 2 set vinti: se è 1-1 inserisci il super tie-break."
+            )
 
     return sets
 

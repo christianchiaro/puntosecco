@@ -13,6 +13,10 @@ def about(request):
     return render(request, "core/about.html")
 
 
+def regolamento(request):
+    return render(request, "core/regolamento.html")
+
+
 def orario(request):
     # Ritorna LO STESSO partial che home.html include: DOM identico per costruzione.
     return render(request, "core/partials/_orario.html", {"now": timezone.localtime()})

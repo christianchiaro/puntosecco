@@ -70,6 +70,7 @@
       </a>
       <nav class="site-nav">
         <a href="{% url 'core:home' %}">Home</a>
+        <a href="{% url 'core:regolamento' %}">Regolamento</a>
         <a href="{% url 'core:about' %}">Chi siamo</a>
         <button class="theme-toggle" type="button"
                 x-data="{ dark: document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches),

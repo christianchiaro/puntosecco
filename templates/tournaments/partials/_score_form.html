@@ -12,12 +12,11 @@
       <span class="dash">-</span>
       <input type="number" name="set1_b" min="0" max="20" inputmode="numeric" value="{{ s1.games_b|default_if_none:'' }}" aria-label="Set 1 game {{ match.team_b.name }}">
     </div>
-    <label class="set-row__tb">
-      <span class="tb-label">tie-break</span>
-      <input type="number" name="set1_ta" min="0" inputmode="numeric" placeholder="-" value="{{ s1.tiebreak_a|default_if_none:'' }}">
-      <span class="dash">-</span>
-      <input type="number" name="set1_tb" min="0" inputmode="numeric" placeholder="-" value="{{ s1.tiebreak_b|default_if_none:'' }}">
-    </label>
+    <div class="set-row__ps">
+      <span class="ps-label">Punto Secco (se 6-6)</span>
+      <label class="ps-choice"><input type="radio" name="set1_ps" value="a" {% if s1.tiebreak_a == 1 %}checked{% endif %}> {{ match.team_a.name }}</label>
+      <label class="ps-choice"><input type="radio" name="set1_ps" value="b" {% if s1.tiebreak_b == 1 %}checked{% endif %}> {{ match.team_b.name }}</label>
+    </div>
   </div>
 
   {% if match.is_knockout %}
@@ -28,12 +27,11 @@
         <span class="dash">-</span>
         <input type="number" name="set2_b" min="0" max="20" inputmode="numeric" value="{{ s2.games_b|default_if_none:'' }}">
       </div>
-      <label class="set-row__tb">
-        <span class="tb-label">tie-break</span>
-        <input type="number" name="set2_ta" min="0" inputmode="numeric" placeholder="-" value="{{ s2.tiebreak_a|default_if_none:'' }}">
-        <span class="dash">-</span>
-        <input type="number" name="set2_tb" min="0" inputmode="numeric" placeholder="-" value="{{ s2.tiebreak_b|default_if_none:'' }}">
-      </label>
+      <div class="set-row__ps">
+        <span class="ps-label">Punto Secco (se 6-6)</span>
+        <label class="ps-choice"><input type="radio" name="set2_ps" value="a" {% if s2.tiebreak_a == 1 %}checked{% endif %}> {{ match.team_a.name }}</label>
+        <label class="ps-choice"><input type="radio" name="set2_ps" value="b" {% if s2.tiebreak_b == 1 %}checked{% endif %}> {{ match.team_b.name }}</label>
+      </div>
     </div>
     <div class="set-row">
       <span class="set-row__label">Super&nbsp;TB</span>
