@@ -22,7 +22,7 @@
   {% if next_match %}
     <p class="next-match">
       <strong>Prossima:</strong>
-      {{ next_match.scheduled_start|time:"H:i" }} · {{ next_match.court }} · {{ next_match.round_label }}
+      {{ next_match.scheduled_start|time:"H:i" }} · {{ next_match.court }} · {{ next_match.round_label_full }}
     </p>
   {% endif %}
 

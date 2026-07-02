@@ -12,7 +12,7 @@
   <div class="match-detail">
     <div class="match-detail__meta muted">
       {% if match.court %}{{ match.court }}{% endif %}
-      {% if match.round_label %} · {{ match.round_label }}{% endif %}
+      {% if match.round_label %} · {{ match.round_label_full }}{% endif %}
       {% if match.group %} - Girone {{ match.group.name }}{% endif %}
       {% if match.scheduled_start %} · {{ match.scheduled_start|time:"H:i" }}{% endif %}
     </div>

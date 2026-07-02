@@ -7,20 +7,29 @@ Caricate solo quando si lavora qui. Sono le regole di dominio di Punto Secco.
 - **Gironi**: girone all'italiana → 6 partite/girone, 18 totali. Partita = **1 set**; sul 6-6 si gioca il **Punto Secco** (un solo punto, non un tie-break a punti - è la specialità del torneo). `slot_span=1`.
 - **Knockout gold (8 squadre)**: prime 2 di ogni girone + 2 migliori terze (wild card) → quarti → semifinali → finale + 3°/4°. I **perdenti dei quarti** giocano la **consolazione 5°-8°** (2 semifinali → finale 5°/6° + 7°/8°), così tutte le 8 coppie hanno un piazzamento univoco.
 - **Knockout silver (4 squadre)**: peggior terza + 3 quarte → semifinali → finale + 3°/4° (niente quarti, niente consolazione).
-- Partita knockout = **2 set + super tie-break a 10 se 1-1**. `slot_span=2` (occupa 2 slot).
+- Partita knockout = **1 set**, come i gironi (`slot_span=1`) - **eccetto** le finali
+  1°/2° di **gold e silver** e la finale 3°/4° del **solo gold**, che si giocano
+  **2 set + super tie-break a 10 se 1-1** (`slot_span=2`). La finale 3°/4° del **silver**
+  resta 1 set. Unica fonte di verità: `Match.TWO_SET_MATCHES` (set di coppie
+  `(phase, round_label)`) / `Match.is_two_set_match` in `models.py`, usata anche da
+  `brackets.py` (slot_span alla creazione), `scoring.py` (validazione formato punteggio)
+  e `_score_form.html` (quali input mostrare).
 - **Classifica finale** (`/classifica/`, `awards.phase_classification`): divisa per tabellone - gold 1°-8°, silver 1°-4°.
 
 ## Timing
-Slot assegnati dinamicamente da `schedule_knockout`. Per il formato a 12: gironi + knockout
-(quarti, semifinali + consolazione 5°-8°, finali) entrano comodamente nei campi disponibili.
+Slot assegnati dinamicamente da `schedule_knockout`. Per il formato a 12 (default, inizio
+14:00): gironi 5 slot + knockout 5 slot (quarti 1, semifinali silver + consolazione 1,
+semifinali gold + finali consolazione 1, finalissime 2) = **10 slot totali → fine torneo
+alle 18:10**. Verificato empiricamente eseguendo lo scheduler, non calcolato a mano.
 
 ## Vincoli scheduler (`scheduling.py`) - coperti da test
 - ogni coppia gioca tutte le altre del girone una volta;
 - una coppia mai su due campi nello stesso slot; un campo una sola partita per slot;
-- knockout: rispettare `slot_span=2` (una partita blocca campo+coppie per 2 slot consecutivi).
+- knockout: rispettare `slot_span` di ogni partita (1 o 2 a seconda del turno - vedi sopra;
+  una partita blocca campo+coppie per `slot_span` slot consecutivi).
 
 ## Punteggio (`scoring.py`, modello `MatchSet`)
-- Il punteggio vive nei `MatchSet` figli (1 per i gironi, fino a 3 nel knockout; il 3° è il super TB, con i punti in `games_*`).
+- Il punteggio vive nei `MatchSet` figli (1 per la maggior parte delle partite, fino a 3 per le finali - vedi `Match.is_two_set_match`; il 3° è il super TB, con i punti in `games_*`).
 - Vincitore set: più game; a parità (6-6) decide il **Punto Secco** - un punto secco, non un tie-break
   tradizionale. `tiebreak_a`/`tiebreak_b` valgono 1 (vince)/0 (perde), non un punteggio reale; form:
   `set{i}_ps` = "a"/"b". Display: `MatchSet.display` mostra `"7-6 (PS)"`, mai un finto punteggio.

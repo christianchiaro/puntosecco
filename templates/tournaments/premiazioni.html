@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Premiazioni - {{ t.name }}</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+{% comment %}
+Schermata a tutto schermo per la cerimonia di premiazione (standalone, niente nav sito,
+stesso pattern di tv.html). Navigazione con frecce/tastiera, tutta client-side: le
+posizioni sono già calcolate e ordinate dalla view, qui è solo un indice che scorre.
+{% endcomment %}
+<body class="tv premiazioni"
+      x-data="{ idx: 0, total: {{ slides|length }} }"
+      x-cloak
+      @keydown.window.arrow-right="if (total) idx = (idx + 1) % total"
+      @keydown.window.arrow-left="if (total) idx = (idx - 1 + total) % total"
+      @keydown.window.escape="window.location.href = '{% url 'tournaments:classifica' slug=t.slug %}'">
+
+  <a class="premiazioni-exit" href="{% url 'tournaments:classifica' slug=t.slug %}">Esci</a>
+
+  {% if slides %}
+    <button class="premiazioni-nav premiazioni-nav--prev" type="button" aria-label="Piazzamento precedente"
+            @click="idx = (idx - 1 + total) % total">‹</button>
+    <button class="premiazioni-nav premiazioni-nav--next" type="button" aria-label="Piazzamento successivo"
+            @click="idx = (idx + 1) % total">›</button>
+
+    <div class="premiazioni-stage">
+      {% for s in slides %}
+        <section class="premiazioni-slide" x-show="idx === {{ forloop.counter0 }}">
+          <img class="premiazioni-logo" src="{% static 'img/logo-mark.png' %}" alt="">
+          <div class="premiazioni-bracket premiazioni-bracket--{{ s.bracket|lower }}">{{ s.bracket }}</div>
+          <div class="premiazioni-pos">{% if s.pos == 1 %}🥇{% elif s.pos == 2 %}🥈{% elif s.pos == 3 %}🥉{% endif %} {{ s.pos }}° posto</div>
+          <div class="premiazioni-team">{{ s.team.name|default:"da definire" }}</div>
+        </section>
+      {% endfor %}
+    </div>
+  {% else %}
+    {% comment %}
+    Nessun tabellone generato ancora: niente frecce (total=0 romperebbe il modulo
+    in Alpine), solo un messaggio e l'uscita.
+    {% endcomment %}
+    <div class="premiazioni-stage">
+      <p class="premiazioni-empty">Nessun piazzamento disponibile ancora - genera prima i tabelloni.</p>
+    </div>
+  {% endif %}
+</body>
+</html>

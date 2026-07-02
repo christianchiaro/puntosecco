@@ -96,6 +96,17 @@ class Match(models.Model):
         GOLD = "gold", "Gold"
         SILVER = "silver", "Silver"
 
+    # Partite che si giocano su 2 set (+ super tie-break a 10 se 1-1): le finali 1°/2°
+    # di Gold e Silver, e la finale 3°/4° del solo Gold. La finale 3°/4° del Silver gioca
+    # invece 1 set solo, come tutto il resto del knockout (quarti, semifinali,
+    # consolazione 5°-8°) e i gironi. Unica fonte di verità: usata sia qui
+    # (is_two_set_match) sia in brackets.py per lo slot_span.
+    TWO_SET_MATCHES = {
+        (Phase.GOLD, "Finale"),
+        (Phase.SILVER, "Finale"),
+        (Phase.GOLD, "Finale 3\xb0/4\xb0"),
+    }
+
     class Status(models.TextChoices):
         SCHEDULED = "scheduled", "Programmata"
         LIVE = "live", "In corso"
@@ -117,7 +128,8 @@ class Match(models.Model):
         Court, null=True, blank=True, related_name="matches", on_delete=models.SET_NULL
     )
     slot_index = models.PositiveSmallIntegerField(null=True, blank=True)
-    # Quanti slot temporali occupa: 1 per i gironi (un set), 2 dai quarti (due set).
+    # Quanti slot temporali occupa: 1 (un set) per la maggior parte delle partite
+    # (gironi + knockout), 2 (due set) solo per le partite in TWO_SET_MATCHES.
     slot_span = models.PositiveSmallIntegerField(default=1)
     scheduled_start = models.DateTimeField(null=True, blank=True)
 
@@ -137,7 +149,8 @@ class Match(models.Model):
         on_delete=models.SET_NULL,
     )
 
-    # Il punteggio vive nei MatchSet figli (1 set per i gironi, fino a 3 nel knockout).
+    # Il punteggio vive nei MatchSet figli (1 set per la maggior parte delle partite,
+    # fino a 3 solo per quelle in TWO_SET_MATCHES - vedi is_two_set_match).
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.SCHEDULED
     )
@@ -192,6 +205,23 @@ class Match(models.Model):
     @property
     def is_knockout(self):
         return self.phase in (self.Phase.GOLD, self.Phase.SILVER)
+
+    @property
+    def is_two_set_match(self):
+        """Solo le partite in TWO_SET_MATCHES (finali 1°/2° di Gold e Silver, finale
+        3°/4° del solo Gold): il resto del knockout gioca 1 set solo. Usare questa
+        property (non is_knockout) per ogni decisione legata al FORMATO del punteggio
+        (quanti set, super tie-break)."""
+        return (self.phase, self.round_label) in self.TWO_SET_MATCHES
+
+    @property
+    def round_label_full(self):
+        """`round_label` con prefisso Gold/Silver nel knockout: i due tabelloni
+        condividono gli stessi nomi di turno ("Semifinale", "Finale"...), quindi senza
+        il prefisso non si distingue a quale dei due appartiene una partita."""
+        if self.is_knockout and self.round_label:
+            return f"{self.get_phase_display()} · {self.round_label}"
+        return self.round_label
 
     @property
     def can_be_scored(self):

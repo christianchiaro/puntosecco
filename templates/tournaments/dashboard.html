@@ -20,7 +20,7 @@
         {% for m in live_matches %}
           <div class="dash-card">
             {% include "tournaments/partials/_match_pill.html" with match=m %}
-            <small class="muted">{{ m.court }} · {{ m.round_label }}{% if m.group %} {{ m.group.name }}{% endif %}</small>
+            <small class="muted">{{ m.court }} · {{ m.round_label_full }}{% if m.group %} {{ m.group.name }}{% endif %}</small>
             <a class="dash-card__score" href="{% url 'tournaments:score_panel' slug=t.slug %}?open={{ m.id }}#match-{{ m.id }}">Inserisci punteggio →</a>
           </div>
         {% endfor %}

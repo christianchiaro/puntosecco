@@ -15,7 +15,7 @@
           <div class="slot-match cell--{{ m.status }}">
             <span class="slot-match__court">{{ m.court }}</span>
             {% include "tournaments/partials/_match_pill.html" with match=m %}
-            <small class="cell__label">{% if m.group %}Girone {{ m.group.name }} · {% endif %}{{ m.round_label }}</small>
+            <small class="cell__label">{% if m.group %}Girone {{ m.group.name }} · {% endif %}{{ m.round_label_full }}</small>
           </div>
         {% endfor %}
       </div>
@@ -40,7 +40,7 @@
                 <td rowspan="{{ cell.span }}" class="cell cell--{{ cell.match.status }}">
                   {% include "tournaments/partials/_match_pill.html" with match=cell.match %}
                   <small class="cell__label">
-                    {% if cell.match.group %}Girone {{ cell.match.group.name }} · {% endif %}{{ cell.match.round_label }}
+                    {% if cell.match.group %}Girone {{ cell.match.group.name }} · {% endif %}{{ cell.match.round_label_full }}
                   </small>
                 </td>
               {% elif cell.kind == "empty" %}

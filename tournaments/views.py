@@ -243,6 +243,26 @@ def classifica(request, slug):
     )
 
 
+@login_required
+@staff_required
+def premiazioni(request, slug):
+    """Schermata a tutto schermo per la cerimonia di premiazione: un piazzamento
+    alla volta, in ordine di "build-up" verso il campione - prima il silver dal
+    4° al 1° posto, poi il gold dall'8° al 1° posto. Riservata allo staff sia lato
+    template (bottone nascosto in classifica.html) sia qui in view (accesso diretto
+    all'URL bloccato dai decoratori)."""
+    t = _tournament(slug)
+    fc = final_classification(t)
+    slides = [
+        {"bracket": "Silver", "pos": row["pos"], "team": row["team"]}
+        for row in reversed(fc["silver"])
+    ] + [
+        {"bracket": "Gold", "pos": row["pos"], "team": row["team"]}
+        for row in reversed(fc["gold"])
+    ]
+    return render(request, "tournaments/premiazioni.html", {"t": t, "slides": slides})
+
+
 def live(request, slug):
     t = _tournament(slug)
     live_url = request.build_absolute_uri(

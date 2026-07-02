@@ -89,10 +89,26 @@ class RegolamentoViewTests(TestCase):
         self.assertContains(resp, "Punto Secco")
         self.assertContains(resp, "6-6")
 
+    def test_regolamento_mentions_punto_secco_on_deuce(self):
+        # Il Punto Secco vale anche nel singolo game: niente vantaggi sul 40-40.
+        resp = self.client.get(reverse("core:regolamento"))
+        self.assertContains(resp, "40-40")
+        self.assertContains(resp, "niente vantaggi")
+
     def test_regolamento_super_tiebreak_unchanged(self):
         # Il super tie-break (3° set knockout) resta un tie-break a punti, non il PS.
         resp = self.client.get(reverse("core:regolamento"))
         self.assertContains(resp, "super tie-break ai 10 punti")
+
+    def test_regolamento_only_finals_are_best_of_three(self):
+        # Quarti/semifinali/consolazione = 1 set; solo le finalissime (gold+silver) e la
+        # finale 3°/4° del gold sono al meglio dei 3 - quella del silver resta 1 set.
+        resp = self.client.get(reverse("core:regolamento"))
+        self.assertContains(
+            resp,
+            "Quarti, semifinali, consolazione 5°-8° e la finale 3°/4° posto del Silver",
+        )
+        self.assertContains(resp, "al meglio dei 3 set")
 
     def test_regolamento_linked_from_nav(self):
         resp = self.client.get(reverse("core:home"))

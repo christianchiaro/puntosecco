@@ -87,7 +87,7 @@ def team_achievements(team):
             mine, theirs = (s.games_a, s.games_b) if is_a else (s.games_b, s.games_a)
             if mine == 6 and theirs == 0:
                 cappotto = True
-        if m.is_knockout and m.winner_id == team.id and sets:
+        if m.is_two_set_match and m.winner_id == team.id and sets:
             first_side = sets[0].winner_side
             if (
                 first_side and (first_side == "a") != is_a

@@ -35,13 +35,13 @@
               </div>
               <div class="tv-score tv-score--empty">in gioco</div>
             {% endif %}
-            <div class="tv-tag tv-tag--live">● IN CORSO · {{ cell.live.round_label }}</div>
+            <div class="tv-tag tv-tag--live">● IN CORSO · {{ cell.live.round_label_full }}</div>
           {% elif cell.next %}
             <div class="tv-match tv-next">
               <div class="tv-team">{{ cell.next.team_a.name|default:"da definire" }}</div>
               <div class="tv-team">{{ cell.next.team_b.name|default:"da definire" }}</div>
             </div>
-            <div class="tv-tag">Prossima · {{ cell.next.scheduled_start|time:"H:i" }} · {{ cell.next.round_label }}</div>
+            <div class="tv-tag">Prossima · {{ cell.next.scheduled_start|time:"H:i" }} · {{ cell.next.round_label_full }}</div>
           {% else %}
             <div class="tv-free">Campo libero</div>
           {% endif %}

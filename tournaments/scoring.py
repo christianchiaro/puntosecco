@@ -1,6 +1,7 @@
 """Registrazione del punteggio e calcolo del vincitore.
 
-API unica per gironi (1 set) e knockout (2 set + super tie-break al terzo se 1-1).
+API unica per partite a 1 set (gironi + quasi tutto il knockout) e partite a 2 set
++ super tie-break al terzo se 1-1 (solo le finali, vedi Match.is_two_set_match).
 """
 
 from .models import Match, MatchSet
@@ -43,7 +44,7 @@ def sets_from_post(match, post, partial=False):
     la decisività del match: si accetta un set ancora in gioco (es. 3-2).
     Solleva ValueError con messaggio leggibile se il punteggio non è valido.
     """
-    max_sets = 3 if match.is_knockout else 1
+    max_sets = 3 if match.is_two_set_match else 1
     sets = []
     for i in range(1, max_sets + 1):
         raw_a = (post.get(f"set{i}_a") or "").strip()
@@ -68,13 +69,15 @@ def sets_from_post(match, post, partial=False):
                 raise ValueError(
                     f"Set {i}: deve esserci un vincitore (a parità di game serve il Punto Secco)."
                 )
-            _validate_set_format(i, ga, gb, is_super_tb=(match.is_knockout and i == 3))
+            _validate_set_format(
+                i, ga, gb, is_super_tb=(match.is_two_set_match and i == 3)
+            )
         sets.append({"games_a": ga, "games_b": gb, "tiebreak_a": ta, "tiebreak_b": tb})
 
     if not sets:
         raise ValueError("Inserisci almeno un set.")
 
-    if not partial and match.is_knockout:
+    if not partial and match.is_two_set_match:
         a = sum(
             1
             for s in sets

@@ -19,6 +19,7 @@ urlpatterns = [
     path("t/<slug:slug>/calendario/", views.schedule, name="schedule"),
     path("t/<slug:slug>/tabelloni/", views.brackets, name="brackets"),
     path("t/<slug:slug>/classifica/", views.classifica, name="classifica"),
+    path("t/<slug:slug>/premiazioni/", views.premiazioni, name="premiazioni"),
     path("t/<slug:slug>/live/", views.live, name="live"),
     path("t/<slug:slug>/live/board/", views.live_board, name="live_board"),
     path("t/<slug:slug>/tv/", views.tv, name="tv"),

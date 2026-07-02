@@ -25,6 +25,11 @@ def _round_name(num_matches):
     return _ROUND_NAMES.get(num_matches, f"Turno ({num_matches})")
 
 
+def _slot_span_for(phase, round_label):
+    """2 slot (due set) per le partite in Match.TWO_SET_MATCHES, 1 slot altrimenti."""
+    return 2 if (phase, round_label) in Match.TWO_SET_MATCHES else 1
+
+
 def _seed_order(n):
     """Ordine standard degli slot di un tabellone a eliminazione (n potenza di 2)."""
     order = [1]
@@ -77,14 +82,15 @@ def _build_phase_bracket(tournament, phase, seeds):
 
     # Primo turno: accoppia secondo l'ordine standard (1 vs n, 2 vs n-1, ...).
     rounds = [[]]
+    label = _round_name(n // 2)
     for pos, k in enumerate(range(0, n, 2), start=1):
         rounds[0].append(
             Match.objects.create(
                 tournament=tournament,
                 phase=phase,
-                round_label=_round_name(n // 2),
+                round_label=label,
                 bracket_pos=pos,
-                slot_span=2,
+                slot_span=_slot_span_for(phase, label),
                 team_a=seeds[order[k] - 1],
                 team_b=seeds[order[k + 1] - 1],
             )
@@ -93,14 +99,15 @@ def _build_phase_bracket(tournament, phase, seeds):
     while len(rounds[-1]) > 1:
         prev = rounds[-1]
         cur = []
+        label = _round_name(len(prev) // 2)
         for pos, i in enumerate(range(0, len(prev), 2), start=1):
             cur.append(
                 Match.objects.create(
                     tournament=tournament,
                     phase=phase,
-                    round_label=_round_name(len(prev) // 2),
+                    round_label=label,
                     bracket_pos=pos,
-                    slot_span=2,
+                    slot_span=_slot_span_for(phase, label),
                     source_a=prev[i],
                     source_b=prev[i + 1],
                 )
@@ -110,12 +117,13 @@ def _build_phase_bracket(tournament, phase, seeds):
     # Finale 3/4 posto: i perdenti delle semifinali (il turno con 2 partite).
     semis = next((r for r in rounds if len(r) == 2), None)
     if semis:
+        label = "Finale 3\xb0/4\xb0"
         Match.objects.create(
             tournament=tournament,
             phase=phase,
-            round_label="Finale 3\xb0/4\xb0",
+            round_label=label,
             bracket_pos=2,
-            slot_span=2,
+            slot_span=_slot_span_for(phase, label),
             source_a=semis[0],
             source_b=semis[1],
             source_a_role=Match.SourceRole.LOSER,
@@ -139,35 +147,38 @@ def build_consolation(tournament, phase, qf):
         return
     loser = Match.SourceRole.LOSER
     cons_sf = []
+    label = "Semifinale 5\xb0-8\xb0"
     for pos, (a, b) in enumerate(((qf[0], qf[1]), (qf[2], qf[3])), start=1):
         cons_sf.append(
             Match.objects.create(
                 tournament=tournament,
                 phase=phase,
-                round_label="Semifinale 5\xb0-8\xb0",
+                round_label=label,
                 bracket_pos=pos,
-                slot_span=2,
+                slot_span=_slot_span_for(phase, label),
                 source_a=a,
                 source_a_role=loser,
                 source_b=b,
                 source_b_role=loser,
             )
         )
+    label = "Finale 5\xb0/6\xb0"
     Match.objects.create(
         tournament=tournament,
         phase=phase,
-        round_label="Finale 5\xb0/6\xb0",
+        round_label=label,
         bracket_pos=1,
-        slot_span=2,
+        slot_span=_slot_span_for(phase, label),
         source_a=cons_sf[0],
         source_b=cons_sf[1],
     )
+    label = "Finale 7\xb0/8\xb0"
     Match.objects.create(
         tournament=tournament,
         phase=phase,
-        round_label="Finale 7\xb0/8\xb0",
+        round_label=label,
         bracket_pos=2,
-        slot_span=2,
+        slot_span=_slot_span_for(phase, label),
         source_a=cons_sf[0],
         source_a_role=loser,
         source_b=cons_sf[1],
@@ -311,7 +322,8 @@ def _knockout_round_groups(tournament):
 
 
 def schedule_knockout(tournament):
-    """Assegna campo, slot e orario alle partite knockout, rispettando slot_span=2.
+    """Assegna campo, slot e orario alle partite knockout, rispettando lo slot_span
+    di ciascuna (1 o 2 a seconda della partita - vedi Match.TWO_SET_MATCHES).
 
     Ritorna il numero totale di slot occupati (gironi + knockout).
     """

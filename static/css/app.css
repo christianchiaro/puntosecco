@@ -250,6 +250,36 @@ body.tv main { padding-bottom: 4rem; }
 @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .tv-score--empty { color: #6f9b8d; font-style: italic; }
 
+/* Premiazioni: schermata a tutto schermo per la cerimonia finale (staff-only, riusa
+   lo sfondo scuro di body.tv). Un piazzamento alla volta, frecce volutamente discrete
+   (poco visibili di default, più leggibili solo al passaggio del mouse). */
+body.premiazioni { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.premiazioni-stage { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 100vh; }
+.premiazioni-slide { display: flex; flex-direction: column; align-items: center; gap: 1rem; text-align: center; padding: 2rem; width: 100%; max-width: 100%; }
+.premiazioni-logo { width: 96px; height: 96px; opacity: .9; }
+.premiazioni-bracket { font-size: 1.4rem; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; }
+.premiazioni-bracket--gold { color: var(--gold); }
+.premiazioni-bracket--silver { color: var(--silver); }
+.premiazioni-pos { font-size: clamp(1.8rem, 5vw, 3rem); color: #b9d2ca; font-weight: 700; }
+/* Nomi coppia lunghi ("Cognome/Cognome" può superare i 30 caratteri): il font enorme
+   (fino a 6rem) rende l'overflow orizzontale molto facile da colpire senza un limite
+   di larghezza esplicito e la possibilità di andare a capo. */
+.premiazioni-team { font-size: clamp(2rem, 8vw, 6rem); font-weight: 800; line-height: 1.1; max-width: 100%; overflow-wrap: break-word; word-break: break-word; }
+
+.premiazioni-exit { position: fixed; top: 1.2rem; right: 1.4rem; color: #eafff7; opacity: .35; font-size: .9rem; padding: .3rem .6rem; }
+.premiazioni-exit:hover { opacity: 1; text-decoration: none; }
+
+.premiazioni-nav {
+  position: fixed; top: 50%; transform: translateY(-50%);
+  width: 3.4rem; height: 3.4rem; display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; line-height: 1; color: #eafff7; background: transparent; border: none;
+  opacity: .18; cursor: pointer;
+}
+.premiazioni-nav:hover { opacity: .7; background: rgba(255,255,255,.08); border-radius: 50%; }
+.premiazioni-nav--prev { left: .8rem; }
+.premiazioni-nav--next { right: .8rem; }
+.premiazioni-empty { color: #9eccbe; font-size: 1.3rem; text-align: center; padding: 2rem; }
+
 /* Classifiche TV: nome + V + differenza game */
 .tv-std-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-games { color: #8fb3a8; font-variant-numeric: tabular-nums; min-width: 3.2rem; text-align: right; }
@@ -376,7 +406,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 /* Nome SEMPRE su una riga, troncato con "…" se troppo lungo (mai a capo: il wrap
    cambierebbe l'altezza delle righe). Il badge gold/silver resta sempre visibile. */
 .standings__coppia { display: flex; align-items: center; gap: .35rem; min-width: 0; }
-.standings__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.standings__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .standings__coppia .badge { flex: none; margin-left: 0; }
 .std-live { flex: none; color: var(--live); font-weight: 700; font-size: .68rem; text-transform: uppercase; white-space: nowrap; }
 .badge { font-size: .68rem; font-weight: 700; padding: .05rem .4rem; border-radius: .25rem; margin-left: .3rem; text-transform: uppercase; }

@@ -66,7 +66,9 @@ def play_all_groups_by_seed(tournament):
 
 
 def play_full_knockout(tournament):
-    """Gioca tutto il knockout (team_a vince 2-0) rispettando l'ordine delle dipendenze."""
+    """Gioca tutto il knockout (team_a vince) rispettando l'ordine delle dipendenze e il
+    formato di ogni partita: 1 set, 2 per quelle in Match.TWO_SET_MATCHES (dipende anche
+    dal tabellone, non solo dal turno - es. Finale 3°/4° e' 2 set solo in Gold)."""
     for label in (
         "Quarti",
         "Semifinale",
@@ -80,9 +82,12 @@ def play_full_knockout(tournament):
             round_label=label, phase__in=[Match.Phase.GOLD, Match.Phase.SILVER]
         ):
             if m.team_a_id and m.team_b_id:
-                record_match_score(
-                    m, [{"games_a": 6, "games_b": 2}, {"games_a": 6, "games_b": 3}]
+                sets = (
+                    [{"games_a": 6, "games_b": 2}, {"games_a": 6, "games_b": 3}]
+                    if m.is_two_set_match
+                    else [{"games_a": 6, "games_b": 2}]
                 )
+                record_match_score(m, sets)
 
 
 def resolve_spareggio(tournament):
@@ -202,6 +207,72 @@ class MatchScoreTests(TestCase):
     def test_str_handles_missing_teams(self):
         m = Match.objects.create(tournament=self.t, phase=Match.Phase.GOLD)
         self.assertEqual(str(m), "? vs ?")
+
+    def test_round_label_full_group_has_no_prefix(self):
+        # Nei gironi il turno (es. "T1") non è ambiguo: nessun prefisso Gold/Silver.
+        m = self._match(phase=Match.Phase.GROUP)
+        m.round_label = "T1"
+        self.assertEqual(m.round_label_full, "T1")
+
+    def test_round_label_full_prefixes_gold_and_silver(self):
+        # Gold e Silver condividono gli stessi nomi turno (Semifinale, Finale...):
+        # senza prefisso non si distingue a quale tabellone appartiene la partita.
+        gold = self._match(phase=Match.Phase.GOLD)
+        gold.round_label = "Semifinale"
+        self.assertEqual(gold.round_label_full, "Gold · Semifinale")
+
+        silver = self._match(phase=Match.Phase.SILVER)
+        silver.round_label = "Semifinale"
+        self.assertEqual(silver.round_label_full, "Silver · Semifinale")
+
+    def test_round_label_full_empty_label_stays_empty(self):
+        m = self._match(phase=Match.Phase.GOLD)
+        m.round_label = ""
+        self.assertEqual(m.round_label_full, "")
+
+    def test_is_two_set_match_false_for_group_match(self):
+        m = self._match(phase=Match.Phase.GROUP)
+        m.round_label = "T1"
+        self.assertFalse(m.is_two_set_match)
+
+    def test_is_two_set_match_false_for_non_final_knockout_rounds(self):
+        # Solo le partite in Match.TWO_SET_MATCHES giocano 2 set: tutto il resto del
+        # knockout (quarti, semifinali, consolazione 5°-8°) gioca 1 set solo.
+        non_final_rounds = (
+            "Quarti",
+            "Semifinale",
+            "Semifinale 5°-8°",
+            "Finale 5°/6°",
+            "Finale 7°/8°",
+        )
+        for phase in (Match.Phase.GOLD, Match.Phase.SILVER):
+            for label in non_final_rounds:
+                m = self._match(phase=phase)
+                m.round_label = label
+                self.assertFalse(
+                    m.is_two_set_match, f"{phase}/{label} non dovrebbe essere 2 set"
+                )
+
+    def test_is_two_set_match_true_for_gold_and_silver_final(self):
+        for phase in (Match.Phase.GOLD, Match.Phase.SILVER):
+            m = self._match(phase=phase)
+            m.round_label = "Finale"
+            self.assertTrue(m.is_two_set_match, f"{phase}/Finale dovrebbe essere 2 set")
+
+    def test_is_two_set_match_true_for_gold_third_place_only(self):
+        gold = self._match(phase=Match.Phase.GOLD)
+        gold.round_label = "Finale 3°/4°"
+        self.assertTrue(
+            gold.is_two_set_match, "Gold/Finale 3°/4° dovrebbe essere 2 set"
+        )
+
+    def test_is_two_set_match_false_for_silver_third_place(self):
+        # Eccezione esplicita: a differenza del Gold, la finale 3°/4° del Silver e' 1 set.
+        silver = self._match(phase=Match.Phase.SILVER)
+        silver.round_label = "Finale 3°/4°"
+        self.assertFalse(
+            silver.is_two_set_match, "Silver/Finale 3°/4° dovrebbe essere 1 set"
+        )
 
 
 class RoundRobinTests(TestCase):
@@ -512,23 +583,42 @@ class BracketTests(TestCase):
         self.assertEqual(gold.filter(round_label="Finale 3°/4°").count(), 1)
 
     def test_knockout_all_two_slots(self):
-        self.assertTrue(all(m.slot_span == 2 for m in self._ko()))
+        # Solo le partite in Match.TWO_SET_MATCHES giocano 2 set e occupano 2 slot
+        # (finali 1°/2° di gold e silver, finale 3°/4° del solo gold - quella del
+        # silver e' 1 set); tutto il resto del knockout occupa 1 slot, come i gironi.
+        for m in self._ko():
+            expected = 2 if m.is_two_set_match else 1
+            self.assertEqual(
+                m.slot_span,
+                expected,
+                f"{m.phase}/{m.round_label} (bracket_pos {m.bracket_pos})",
+            )
 
     def test_no_court_or_team_conflict_in_knockout(self):
-        # Una partita a 2 slot occupa slot_index e slot_index+1, sul suo campo.
+        # Una partita occupa slot_index .. slot_index + slot_span - 1 sul suo campo
+        # (1 slot per la maggior parte del knockout, 2 solo per le finali).
         occupied = set()  # (slot, court)
         for m in self._ko():
-            for s in (m.slot_index, m.slot_index + 1):
+            for s in range(m.slot_index, m.slot_index + m.slot_span):
                 key = (s, m.court_id)
                 self.assertNotIn(key, occupied, f"Conflitto campo allo slot {s}")
                 occupied.add(key)
 
     def test_whole_tournament_slot_count(self):
-        # 16 coppie: gironi (6) + knockout in 4 turni (quarti, semi silver+consolazione,
-        # semi gold+finali consolazione, finalissime) con i blocchi >4 partite spezzati
-        # sui campi = 20 slot.
+        # 16 coppie, 4 campi: gironi (6 slot) + knockout in 4 turni.
+        #   - quarti (8 partite, span 1): 2 chunk da 4 campi -> 2 slot (6, 7)
+        #   - semifinali silver (2) + semifinali consolazione 5°-8° (4) = 6 partite,
+        #     span 1: 2 chunk -> 2 slot (8, 9)
+        #   - semifinali gold (2) + finale 5°/6° (2) + finale 7°/8° (2) = 6 partite,
+        #     span 1: 2 chunk -> 2 slot (10, 11)
+        #   - finalissime 1°/2° e 3°/4° gold+silver (4 partite): 1 chunk da 4 campi.
+        #     3 di queste 4 sono in Match.TWO_SET_MATCHES (span 2) - la finale 3°/4°
+        #     del silver e' l'eccezione a 1 set/span 1 - ma lo slot del chunk e' comunque
+        #     max(span) = 2 -> 2 slot (12, 13)
+        # Totale: 6 + 2 + 2 + 2 + 2 = 14 slot. Valore verificato eseguendo
+        # schedule_knockout() sul fixture reale (make_full_tournament), non calcolato a mano.
         total = schedule_knockout(self.t)  # slot totali (gironi + knockout)
-        self.assertEqual(total, 20)
+        self.assertEqual(total, 14)
 
     def test_winner_advances_to_semifinal(self):
         qf1 = self.t.matches.get(
@@ -538,9 +628,9 @@ class BracketTests(TestCase):
             phase=Match.Phase.GOLD, round_label="Semifinale", bracket_pos=1
         )
         winner = qf1.team_a
-        record_match_score(
-            qf1, [{"games_a": 6, "games_b": 0}, {"games_a": 6, "games_b": 0}]
-        )
+        # Quarti = 1 set solo col nuovo formato: verifico solo l'avanzamento, non il
+        # formato del punteggio (non validato da record_match_score).
+        record_match_score(qf1, [{"games_a": 6, "games_b": 0}])
         sf1.refresh_from_db()
         self.assertEqual(sf1.team_a_id, winner.id)
 
@@ -553,24 +643,18 @@ class BracketTests(TestCase):
         )
         third = self.t.matches.get(phase=Match.Phase.GOLD, round_label="Finale 3°/4°")
         final = self.t.matches.get(phase=Match.Phase.GOLD, round_label="Finale")
-        # Riempio le semifinali avanzando i quarti.
+        # Riempio le semifinali avanzando i quarti (1 set: verifico solo l'avanzamento).
         for pos in (1, 2, 3, 4):
             qf = self.t.matches.get(
                 phase=Match.Phase.GOLD, round_label="Quarti", bracket_pos=pos
             )
-            record_match_score(
-                qf, [{"games_a": 6, "games_b": 0}, {"games_a": 6, "games_b": 0}]
-            )
+            record_match_score(qf, [{"games_a": 6, "games_b": 0}])
         gold_sf1.refresh_from_db()
         gold_sf2.refresh_from_db()
-        # Gioco le semifinali: team_a vince entrambe.
+        # Gioco le semifinali (1 set): team_a vince entrambe.
         loser1 = gold_sf1.team_b
-        record_match_score(
-            gold_sf1, [{"games_a": 6, "games_b": 0}, {"games_a": 6, "games_b": 0}]
-        )
-        record_match_score(
-            gold_sf2, [{"games_a": 6, "games_b": 0}, {"games_a": 6, "games_b": 0}]
-        )
+        record_match_score(gold_sf1, [{"games_a": 6, "games_b": 0}])
+        record_match_score(gold_sf2, [{"games_a": 6, "games_b": 0}])
         third.refresh_from_db()
         final.refresh_from_db()
         self.assertEqual(third.team_a_id, loser1.id)  # perdente SF1 → finale 3°/4°
@@ -587,7 +671,8 @@ class BracketTests(TestCase):
             phase=Match.Phase.GOLD, round_label="Semifinale", bracket_pos=1
         )
         a, b = qf1.team_a, qf1.team_b
-        win = [{"games_a": 6, "games_b": 0}, {"games_a": 6, "games_b": 0}]
+        # Quarti e semifinale = 1 set solo col nuovo formato.
+        win = [{"games_a": 6, "games_b": 0}]
         record_match_score(qf1, win)  # vince team_a → va in semifinale
         record_match_score(qf2, win)  # popola l'altro lato della semifinale
         sf1.refresh_from_db()
@@ -597,9 +682,7 @@ class BracketTests(TestCase):
         self.assertEqual(sf1.status, Match.Status.DONE)
 
         # Ri-segno il quarto col risultato OPPOSTO: ora passa team_b.
-        record_match_score(
-            qf1, [{"games_a": 0, "games_b": 6}, {"games_a": 0, "games_b": 6}]
-        )
+        record_match_score(qf1, [{"games_a": 0, "games_b": 6}])
         self.assertEqual(qf1._downstream_reset, 1)  # la semifinale è stata azzerata
         sf1.refresh_from_db()
         self.assertEqual(sf1.team_a_id, b.id)  # team aggiornato
@@ -806,6 +889,17 @@ class ScoringViewTests(TestCase):
             kwargs={"slug": self.t.slug, "match_id": match.id},
         )
 
+    def _advance_to_gold_final(self):
+        """Gioca quarti e semifinali gold (1 set: e' tutto cio' che serve per
+        avanzare) cosi' da avere due coppie assegnate alla Finale gold, una delle
+        partite che gioca 2 set (vedi Match.TWO_SET_MATCHES)."""
+        play_all_groups_by_seed(self.t)
+        seed_brackets(self.t)
+        for label in ("Quarti", "Semifinale"):
+            for m in self.t.matches.filter(round_label=label, phase=Match.Phase.GOLD):
+                record_match_score(m, [{"games_a": 6, "games_b": 2}])
+        return self.t.matches.get(phase=Match.Phase.GOLD, round_label="Finale")
+
     def test_panel_is_public(self):
         # Lo scoring è aperto a tutti: nessun login richiesto.
         resp = self.client.get(self.panel_url())
@@ -849,35 +943,28 @@ class ScoringViewTests(TestCase):
         self.assertEqual(m.score_display, "7-6 (PS)")
 
     def test_post_knockout_two_zero_advances_winner(self):
-        play_all_groups_by_seed(self.t)
-        seed_brackets(self.t)
-        qf1 = self.t.matches.get(
-            phase=Match.Phase.GOLD, round_label="Quarti", bracket_pos=1
-        )
-        winner = qf1.team_a
+        # La finale gold gioca 2 set (Match.TWO_SET_MATCHES):
+        # un 2-0 reale via POST deve finalizzare la partita col vincitore giusto.
+        final = self._advance_to_gold_final()
+        winner = final.team_a
         resp = self.client.post(
-            self.match_url(qf1),
+            self.match_url(final),
             {"set1_a": "6", "set1_b": "2", "set2_a": "6", "set2_b": "3"},
         )
         self.assertEqual(resp.status_code, 200)
-        sf1 = self.t.matches.get(
-            phase=Match.Phase.GOLD, round_label="Semifinale", bracket_pos=1
-        )
-        self.assertEqual(sf1.team_a_id, winner.id)
+        final.refresh_from_db()
+        self.assertTrue(final.is_played)
+        self.assertEqual(final.winner_id, winner.id)
 
     def test_post_knockout_one_one_without_super_tb_rejected(self):
-        play_all_groups_by_seed(self.t)
-        seed_brackets(self.t)
-        qf1 = self.t.matches.get(
-            phase=Match.Phase.GOLD, round_label="Quarti", bracket_pos=1
-        )
+        final = self._advance_to_gold_final()
         resp = self.client.post(
-            self.match_url(qf1),
+            self.match_url(final),
             {"set1_a": "6", "set1_b": "2", "set2_a": "2", "set2_b": "6"},
         )
         self.assertContains(resp, "super tie-break")
-        qf1.refresh_from_db()
-        self.assertFalse(qf1.is_played)
+        final.refresh_from_db()
+        self.assertFalse(final.is_played)
 
     def test_edit_form_prefills_existing_score(self):
         m = self.t.matches.filter(phase=Match.Phase.GROUP).first()
@@ -896,13 +983,9 @@ class ScoringViewTests(TestCase):
         self.assertFalse(m.is_played)
 
     def test_super_tiebreak_must_reach_ten(self):
-        play_all_groups_by_seed(self.t)
-        seed_brackets(self.t)
-        qf1 = self.t.matches.get(
-            phase=Match.Phase.GOLD, round_label="Quarti", bracket_pos=1
-        )
+        final = self._advance_to_gold_final()
         resp = self.client.post(
-            self.match_url(qf1),
+            self.match_url(final),
             {
                 "action": "final",
                 "set1_a": "6",
@@ -914,8 +997,8 @@ class ScoringViewTests(TestCase):
             },
         )
         self.assertContains(resp, "Super tie-break")
-        qf1.refresh_from_db()
-        self.assertFalse(qf1.is_played)
+        final.refresh_from_db()
+        self.assertFalse(final.is_played)
 
     def test_scoring_creates_log_entry(self):
         m = self.t.matches.filter(phase=Match.Phase.GROUP).first()
@@ -1038,11 +1121,11 @@ class ScoringViewTests(TestCase):
     def test_gold_final_triggers_champion(self):
         play_all_groups_by_seed(self.t)
         seed_brackets(self.t)
+        # Quarti/semifinale = 1 set solo col nuovo formato: avanzo il tabellone fino
+        # alla finale, che e' l'unica cosa che questo test verifica davvero.
         for label in ("Quarti", "Semifinale"):
             for m in self.t.matches.filter(round_label=label, phase=Match.Phase.GOLD):
-                record_match_score(
-                    m, [{"games_a": 6, "games_b": 2}, {"games_a": 6, "games_b": 3}]
-                )
+                record_match_score(m, [{"games_a": 6, "games_b": 2}])
         final = self.t.matches.get(phase=Match.Phase.GOLD, round_label="Finale")
         resp = self.client.post(
             self.match_url(final),
@@ -1089,12 +1172,16 @@ class AwardsTests(TestCase):
         self.assertIn("Imbattuti", labels)
 
     def test_rimonta_achievement(self):
-        qf = self.t.matches.get(
-            phase=Match.Phase.GOLD, round_label="Quarti", bracket_pos=1
-        )
-        winner = qf.team_a
+        # "Rimonta" (m.is_two_set_match) e' guadagnabile solo nelle partite a 2 set
+        # (vedi Match.TWO_SET_MATCHES): avanzo quarti/semifinale (1 set) per avere una
+        # finale gold vera, poi ci registro una rimonta (set 1 perso, match vinto).
+        for label in ("Quarti", "Semifinale"):
+            for m in self.t.matches.filter(round_label=label, phase=Match.Phase.GOLD):
+                record_match_score(m, [{"games_a": 6, "games_b": 2}])
+        final = self.t.matches.get(phase=Match.Phase.GOLD, round_label="Finale")
+        winner = final.team_a
         record_match_score(
-            qf,
+            final,
             [
                 {"games_a": 4, "games_b": 6},
                 {"games_a": 6, "games_b": 2},
@@ -1141,6 +1228,110 @@ class AwardsTests(TestCase):
         )
         self.t.refresh_from_db()
         self.assertEqual(self.t.status, Tournament.Status.DONE)
+
+
+class PremiazioniViewTests(TestCase):
+    """Schermata a tutto schermo per la premiazione: staff-only (bottone + view) e
+    ordine di build-up silver 4→1 poi gold 8→1."""
+
+    def setUp(self):
+        self.staff = get_user_model().objects.create_user(
+            "staff-premiazioni", password="x", is_staff=True
+        )
+        self.t = make_3group_tournament(slug="premiazioni-test")
+        generate_group_stage(self.t)
+        play_all_groups_by_seed(self.t)
+        resolve_spareggio(self.t)
+        seed_brackets(self.t)
+        play_full_knockout(self.t)
+
+    def url(self):
+        return reverse("tournaments:premiazioni", kwargs={"slug": self.t.slug})
+
+    def test_anonymous_redirected_to_login(self):
+        self.assertEqual(self.client.get(self.url()).status_code, 302)
+
+    def test_non_staff_redirected_to_login(self):
+        get_user_model().objects.create_user("giocatore", password="x")
+        self.client.login(username="giocatore", password="x")
+        self.assertEqual(self.client.get(self.url()).status_code, 302)
+
+    def test_staff_gets_200(self):
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.get(self.url()).status_code, 200)
+
+    def test_no_template_comment_leaks(self):
+        # Regressione: i commenti {# #} multi-riga vengono renderizzati come testo
+        # (vanno scritti con {% comment %}{% endcomment %} - vedi ViewTests).
+        self.client.force_login(self.staff)
+        self.assertNotIn("{#", self.client.get(self.url()).content.decode())
+
+    def test_no_brackets_yet_shows_empty_state_not_broken_nav(self):
+        # Torneo appena creato (niente gironi/knockout ancora): il bottone in
+        # classifica.html è comunque sempre visibile allo staff, quindi la view deve
+        # reggere lo stato "zero piazzamenti" senza rompersi (niente frecce/idx % 0).
+        empty_t = make_3group_tournament(slug="premiazioni-vuoto")
+        self.client.force_login(self.staff)
+        resp = self.client.get(
+            reverse("tournaments:premiazioni", kwargs={"slug": empty_t.slug})
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Nessun piazzamento disponibile")
+        self.assertNotContains(resp, "premiazioni-nav--prev")
+
+    def test_order_is_silver_descending_then_gold_descending(self):
+        # Silver ha solo 4-1 (4 coppie, niente consolazione); gold arriva fino a 8-1.
+        self.client.force_login(self.staff)
+        body = self.client.get(self.url()).content.decode()
+        expected_positions = [
+            ("Silver", 4),
+            ("Silver", 3),
+            ("Silver", 2),
+            ("Silver", 1),
+            ("Gold", 8),
+            ("Gold", 7),
+            ("Gold", 6),
+            ("Gold", 5),
+            ("Gold", 4),
+            ("Gold", 3),
+            ("Gold", 2),
+            ("Gold", 1),
+        ]
+        offsets = []
+        for bracket, pos in expected_positions:
+            marker = f'premiazioni-bracket--{bracket.lower()}">{bracket}'
+            idx = body.find(marker, offsets[-1] if offsets else 0)
+            self.assertNotEqual(
+                idx, -1, f"Slide {bracket} non trovata dopo la precedente"
+            )
+            pos_idx = body.find(f"{pos}° posto", idx)
+            self.assertNotEqual(pos_idx, -1, f"{pos}° posto non trovato per {bracket}")
+            offsets.append(pos_idx)
+        self.assertEqual(offsets, sorted(offsets))  # ogni slide dopo la precedente
+
+    def test_champion_is_last_slide(self):
+        self.client.force_login(self.staff)
+        resp = self.client.get(self.url())
+        body = resp.content.decode()
+        champ = champion(self.t)
+        self.assertIsNotNone(champ)
+        # Il nome del campione deve comparire nel documento dopo l'ultima menzione
+        # di "Silver": conferma che la sua slide sta nella parte gold, in coda.
+        self.assertGreater(body.rindex(champ.name), body.rindex("Silver"))
+
+    def test_classifica_button_hidden_for_anonymous(self):
+        resp = self.client.get(
+            reverse("tournaments:classifica", kwargs={"slug": self.t.slug})
+        )
+        self.assertNotContains(resp, "Schermata premiazioni")
+
+    def test_classifica_button_visible_for_staff(self):
+        self.client.force_login(self.staff)
+        resp = self.client.get(
+            reverse("tournaments:classifica", kwargs={"slug": self.t.slug})
+        )
+        self.assertContains(resp, "Schermata premiazioni")
+        self.assertContains(resp, self.url())
 
 
 class SetupTests(TestCase):
@@ -1566,9 +1757,7 @@ class WildCardBracketTest(TestCase):
         for m in t.matches.filter(
             phase=Match.Phase.GOLD, round_label="Quarti"
         ).order_by("bracket_pos"):
-            record_match_score(
-                m, [{"games_a": 6, "games_b": 2}, {"games_a": 6, "games_b": 3}]
-            )
+            record_match_score(m, [{"games_a": 6, "games_b": 2}])  # quarti = 1 set
             losers.append(m.loser.id)
         cons_teams = set()
         for m in t.matches.filter(
@@ -1607,9 +1796,7 @@ class WildCardBracketTest(TestCase):
             round_label__in=["Semifinale 5°-8°", "Finale 5°/6°", "Finale 7°/8°"]
         ).delete()
         for m in t.matches.filter(phase=Match.Phase.GOLD, round_label="Quarti"):
-            record_match_score(
-                m, [{"games_a": 6, "games_b": 2}, {"games_a": 6, "games_b": 3}]
-            )
+            record_match_score(m, [{"games_a": 6, "games_b": 2}])  # quarti = 1 set
         self.assertFalse(t.matches.filter(round_label="Semifinale 5°-8°").exists())
 
         call_command("add_consolation", t.slug)
