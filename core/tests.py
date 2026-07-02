@@ -100,6 +100,29 @@ class RegolamentoViewTests(TestCase):
         resp = self.client.get(reverse("core:regolamento"))
         self.assertContains(resp, "super tie-break ai 10 punti")
 
+    def test_regolamento_calendar_link_points_to_latest_tournament_schedule(self):
+        # Il link "calendario" deve puntare al calendario del torneo, non alla home.
+        older = Tournament.objects.create(
+            name="Vecchio Torneo", slug="vecchio-torneo", date=datetime.date(2025, 1, 1)
+        )
+        latest = Tournament.objects.create(
+            name="Torneo Recente", slug="torneo-recente", date=datetime.date(2026, 9, 1)
+        )
+        resp = self.client.get(reverse("core:regolamento"))
+        self.assertContains(
+            resp, reverse("tournaments:schedule", kwargs={"slug": latest.slug})
+        )
+        self.assertNotContains(
+            resp, reverse("tournaments:schedule", kwargs={"slug": older.slug})
+        )
+
+    def test_regolamento_without_tournaments_has_no_calendar_link(self):
+        # Nessun torneo -> niente link (sarebbe rotto), solo il messaggio informativo.
+        resp = self.client.get(reverse("core:regolamento"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "saranno pubblicati nel calendario")
+        self.assertNotContains(resp, '<a href="/">calendario')
+
     def test_regolamento_only_finals_are_best_of_three(self):
         # Quarti/semifinali/consolazione = 1 set; solo le finalissime (gold+silver) e la
         # finale 3°/4° del gold sono al meglio dei 3 - quella del silver resta 1 set.

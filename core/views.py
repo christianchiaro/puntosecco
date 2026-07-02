@@ -14,7 +14,10 @@ def about(request):
 
 
 def regolamento(request):
-    return render(request, "core/regolamento.html")
+    t = (
+        Tournament.objects.first()
+    )  # torneo piu' recente (Meta.ordering = ["-date", "name"])
+    return render(request, "core/regolamento.html", {"t": t})
 
 
 def orario(request):

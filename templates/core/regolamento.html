@@ -59,5 +59,9 @@
     <li><strong>Punteggio pubblico:</strong> i risultati possono essere inseriti da chiunque sia a bordo campo (staff o giocatori), tramite il sito; ogni inserimento è comunque tracciato per garantire trasparenza.</li>
     <li><strong>Correzioni:</strong> se un risultato viene corretto dopo essere stato inserito per errore, le eventuali partite successive del tabellone che dipendevano da quel risultato vengono riaggiornate automaticamente.</li>
   </ul>
-  <p class="muted">Il programma e i gironi sorteggiati, con campi e orari di ogni partita, sono pubblicati nel <a href="{% url 'core:home' %}">calendario del sito del torneo</a>.</p>
+  {% if t %}
+    <p class="muted">Il programma e i gironi sorteggiati, con campi e orari di ogni partita, sono pubblicati nel <a href="{% url 'tournaments:schedule' slug=t.slug %}">calendario del torneo</a>.</p>
+  {% else %}
+    <p class="muted">Il programma e i gironi sorteggiati, con campi e orari di ogni partita, saranno pubblicati nel calendario non appena il torneo sarà disponibile.</p>
+  {% endif %}
 {% endblock %}
