@@ -1319,6 +1319,66 @@ class PremiazioniViewTests(TestCase):
         # di "Silver": conferma che la sua slide sta nella parte gold, in coda.
         self.assertGreater(body.rindex(champ.name), body.rindex("Silver"))
 
+    def test_premio_anim_mapping(self):
+        from .views import _premio_anim
+
+        # Gold: premi veri.
+        self.assertEqual(_premio_anim("Gold", 1), "trophy")
+        self.assertEqual(_premio_anim("Gold", 2), "medal-silver")
+        self.assertEqual(_premio_anim("Gold", 3), "medal-bronze")
+        self.assertEqual(_premio_anim("Gold", 4), "fire")
+        self.assertEqual(_premio_anim("Gold", 5), "biceps")
+        self.assertEqual(_premio_anim("Gold", 6), "biceps")
+        self.assertEqual(_premio_anim("Gold", 7), "clap")
+        self.assertEqual(_premio_anim("Gold", 8), "poop")
+        # Silver: tutto sfotto', via via piu' carino salendo.
+        self.assertEqual(_premio_anim("Silver", 4), "poop")
+        self.assertEqual(_premio_anim("Silver", 3), "clown")
+        self.assertEqual(_premio_anim("Silver", 2), "snail")
+        self.assertEqual(_premio_anim("Silver", 1), "crown")
+
+    def test_slides_reference_lottie_assets(self):
+        # 12 slide. Gold (premi veri): trofeo al campione, argento/bronzo al podio,
+        # fire 4°, biceps 5°/6°, clap 7°, cacchetta 8°. Silver (sfotto' a scala):
+        # corona 1°, lumaca 2°, clown 3°, cacchetta 4°.
+        self.client.force_login(self.staff)
+        body = self.client.get(self.url()).content.decode()
+        expected = {
+            "lottie/trophy.json": 1,
+            "lottie/medal-silver.json": 1,
+            "lottie/medal-bronze.json": 1,
+            "lottie/fire.json": 1,
+            "lottie/biceps.json": 2,
+            "lottie/clap.json": 1,
+            "lottie/poop.json": 2,
+            "lottie/crown.json": 1,
+            "lottie/snail.json": 1,
+            "lottie/clown.json": 1,
+        }
+        for asset, count in expected.items():
+            self.assertEqual(body.count(asset), count, asset)
+
+    def test_lottie_asset_files_exist(self):
+        # Le animazioni referenziate devono esistere in static/ (altrimenti in prod
+        # il manifest storage esplode al primo render, o l'animazione resta vuota).
+        from django.contrib.staticfiles import finders
+
+        for name in (
+            "trophy",
+            "medal-silver",
+            "medal-bronze",
+            "fire",
+            "biceps",
+            "clap",
+            "poop",
+            "crown",
+            "snail",
+            "clown",
+        ):
+            self.assertIsNotNone(
+                finders.find(f"lottie/{name}.json"), f"manca static/lottie/{name}.json"
+            )
+
     def test_classifica_button_hidden_for_anonymous(self):
         resp = self.client.get(
             reverse("tournaments:classifica", kwargs={"slug": self.t.slug})
@@ -1332,6 +1392,20 @@ class PremiazioniViewTests(TestCase):
         )
         self.assertContains(resp, "Schermata premiazioni")
         self.assertContains(resp, self.url())
+
+    def test_classifica_button_is_not_boosted(self):
+        # Regressione: senza hx-boost="false" htmx scambia solo il <body> e lo <script>
+        # Alpine di premiazioni.html (pagina standalone, non estende base.html) non viene
+        # mai eseguito -> pagina vuota (x-cloak mai rimosso) finche' non si fa un refresh
+        # manuale. Stesso pattern del link a tv.html in live.html.
+        self.client.force_login(self.staff)
+        resp = self.client.get(
+            reverse("tournaments:classifica", kwargs={"slug": self.t.slug})
+        )
+        body = resp.content.decode()
+        idx = body.find("Schermata premiazioni")
+        link_start = body.rfind("<a", 0, idx)
+        self.assertIn('hx-boost="false"', body[link_start:idx])
 
 
 class SetupTests(TestCase):

@@ -5,6 +5,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Premiazioni - {{ t.name }}</title>
+  {% comment %}
+  lottie-web PRIMA di Alpine: entrambi defer, eseguono in ordine di documento, cosi'
+  window.lottie esiste gia' quando Alpine inizializza le slide. Le animazioni sono le
+  Noto Animated Emoji di Google (CC BY 4.0), servite da static/lottie/ via whitenoise.
+  {% endcomment %}
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
@@ -30,11 +36,24 @@ posizioni sono già calcolate e ordinate dalla view, qui è solo un indice che s
 
     <div class="premiazioni-stage">
       {% for s in slides %}
-        <section class="premiazioni-slide" x-show="idx === {{ forloop.counter0 }}">
+        {% comment %}
+        x-effect rigioca la Lottie della slide ad ogni entrata (cambio di idx): la
+        animazione riparte da frame 0 e poi resta in loop finche' la slide e' visibile;
+        le altre vengono messe in pausa. L'emoji statica del podio e' sostituita
+        dall'animazione stessa (stessa gerarchia: oro/argento/bronzo).
+        {% endcomment %}
+        <section class="premiazioni-slide" x-show="idx === {{ forloop.counter0 }}"
+                 x-effect="if (idx === {{ forloop.counter0 }}) window.premioLottie($el.querySelector('.premiazioni-anim'))">
           <img class="premiazioni-logo" src="{% static 'img/logo-mark.png' %}" alt="">
           <div class="premiazioni-bracket premiazioni-bracket--{{ s.bracket|lower }}">{{ s.bracket }}</div>
-          <div class="premiazioni-pos">{% if s.pos == 1 %}🥇{% elif s.pos == 2 %}🥈{% elif s.pos == 3 %}🥉{% endif %} {{ s.pos }}° posto</div>
+          <div class="premiazioni-pos">{{ s.pos }}° posto</div>
           <div class="premiazioni-team">{{ s.team.name|default:"da definire" }}</div>
+          {% comment %}
+          Animazione in coda alla colonna, sotto il nome. Percorso costruito con |add
+          e risolto DENTRO {% static %}: col manifest storage di prod il file deve
+          essere risolto per intero (lottie/x.json), non come directory + suffisso.
+          {% endcomment %}
+          <div class="premiazioni-anim" data-path="{% static 'lottie/'|add:s.anim|add:'.json' %}"></div>
         </section>
       {% endfor %}
     </div>
@@ -47,5 +66,37 @@ posizioni sono già calcolate e ordinate dalla view, qui è solo un indice che s
       <p class="premiazioni-empty">Nessun piazzamento disponibile ancora - genera prima i tabelloni.</p>
     </div>
   {% endif %}
+
+  <script>
+    // Gestore delle Lottie di premiazione: un'istanza lazy per slide, creata alla
+    // prima entrata e riusata alle successive (goToAndPlay riparte da frame 0).
+    // Le slide non visibili vengono messe in pausa per non sprecare CPU.
+    // Progressive enhancement: senza window.lottie (CDN giu') la pagina resta
+    // perfettamente usabile, semplicemente senza animazioni.
+    window.premioLottie = (function () {
+      const instances = new Map();
+      return function (container) {
+        if (!window.lottie || !container) return;
+        let inst = instances.get(container);
+        if (!inst) {
+          inst = window.lottie.loadAnimation({
+            container: container,
+            renderer: "svg",
+            loop: true,
+            autoplay: false,
+            path: container.dataset.path,
+          });
+          instances.set(container, inst);
+          // Il JSON si carica in modo asincrono: al ready parte da frame 0.
+          inst.addEventListener("DOMLoaded", function () { inst.goToAndPlay(0, true); });
+        } else {
+          inst.goToAndPlay(0, true);
+        }
+        for (const other of instances.values()) {
+          if (other !== inst) other.pause();
+        }
+      };
+    })();
+  </script>
 </body>
 </html>

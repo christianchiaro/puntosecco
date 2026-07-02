@@ -260,6 +260,11 @@ body.premiazioni { display: flex; align-items: center; justify-content: center; 
 .premiazioni-bracket { font-size: 1.4rem; font-weight: 800; text-transform: uppercase; letter-spacing: 3px; }
 .premiazioni-bracket--gold { color: var(--gold); }
 .premiazioni-bracket--silver { color: var(--silver); }
+/* Lottie di piazzamento (trofeo/medaglie/applausi): sostituisce l'emoji statica del
+   podio, in coda alla colonna sotto il nome coppia. Dimensione clampata sull'altezza
+   viewport per non spingere il contenuto fuori schermo su schermi bassi. */
+.premiazioni-anim { width: clamp(120px, 24vh, 220px); height: clamp(120px, 24vh, 220px); margin: -.4rem 0 0; }
+.premiazioni-anim svg { display: block; }
 .premiazioni-pos { font-size: clamp(1.8rem, 5vw, 3rem); color: #b9d2ca; font-weight: 700; }
 /* Nomi coppia lunghi ("Cognome/Cognome" può superare i 30 caratteri): il font enorme
    (fino a 6rem) rende l'overflow orizzontale molto facile da colpire senza un limite

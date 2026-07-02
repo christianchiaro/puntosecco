@@ -243,6 +243,31 @@ def classifica(request, slug):
     )
 
 
+def _premio_anim(bracket, pos):
+    """Nome del file Lottie (static/lottie/<nome>.json) per la slide di premiazione.
+
+    Gold: premi veri - trofeo al campione, argento/bronzo al podio (come le emoji
+    statiche in classifica), poi fuoco/bicipite/applausi scendendo, cacchetta
+    all'ultimo (8°). Silver: tutto sfotto' bonario, via via piu' carino salendo -
+    cacchetta (4°), clown (3°), lumaca (2°, lenta ma e' arrivata), corona (1°,
+    "re del Silver": quasi un premio vero)."""
+    if bracket == "Silver":
+        return {1: "crown", 2: "snail", 3: "clown"}.get(pos, "poop")
+    if pos == 1:
+        return "trophy"
+    if pos == 2:
+        return "medal-silver"
+    if pos == 3:
+        return "medal-bronze"
+    if pos == 4:
+        return "fire"
+    if pos in (5, 6):
+        return "biceps"
+    if pos == 7:
+        return "clap"
+    return "poop"
+
+
 @login_required
 @staff_required
 def premiazioni(request, slug):
@@ -254,11 +279,14 @@ def premiazioni(request, slug):
     t = _tournament(slug)
     fc = final_classification(t)
     slides = [
-        {"bracket": "Silver", "pos": row["pos"], "team": row["team"]}
-        for row in reversed(fc["silver"])
-    ] + [
-        {"bracket": "Gold", "pos": row["pos"], "team": row["team"]}
-        for row in reversed(fc["gold"])
+        {
+            "bracket": bracket,
+            "pos": row["pos"],
+            "team": row["team"],
+            "anim": _premio_anim(bracket, row["pos"]),
+        }
+        for bracket, rows in (("Silver", fc["silver"]), ("Gold", fc["gold"]))
+        for row in reversed(rows)
     ]
     return render(request, "tournaments/premiazioni.html", {"t": t, "slides": slides})
 

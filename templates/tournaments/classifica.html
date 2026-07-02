@@ -9,7 +9,13 @@
   <p class="muted">Piazzamenti per tabellone. I posti si completano man mano che le finali vengono giocate.</p>
 
   {% if request.user.is_staff %}
-    <p><a class="btn" href="{% url 'tournaments:premiazioni' slug=t.slug %}">🏆 Schermata premiazioni</a></p>
+    {% comment %}
+    hx-boost scambierebbe solo il <body>: premiazioni.html e' una pagina standalone con
+    il suo <head> (Alpine via CDN) che non verrebbe mai eseguito, lasciando la pagina
+    vuota finche' non si fa un refresh manuale. hx-boost="false" forza una navigazione
+    piena, stesso pattern del link a tv.html in live.html.
+    {% endcomment %}
+    <p><a class="btn" hx-boost="false" href="{% url 'tournaments:premiazioni' slug=t.slug %}">🏆 Schermata premiazioni</a></p>
   {% endif %}
 
   <div class="final-rank">
